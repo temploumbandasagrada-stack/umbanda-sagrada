@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa de Estudo — Direção</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <div class="simbolo">✦</div>
+    <div>
+      <h1>Casa de Estudo</h1>
+      <small>Painel da Direção</small>
+    </div>
+  </div>
+  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+</header>
+
+<nav class="abas">
+  <button class="aba ativa" data-secao="usuarios" onclick="irPara('usuarios')">Usuários</button>
+  <button class="aba" data-secao="cursos" onclick="irPara('cursos')">Cursos</button>
+  <button class="aba" data-secao="provas" onclick="irPara('provas')">Provas</button>
+  <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+</nav>
+
+<main class="conteudo">
+
+  <!-- ==================== USUÁRIOS ==================== -->
+  <section class="secao ativa" id="sec-usuarios">
+    <h2>Usuários e acessos</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th>Situação</th><th>Ações</th></tr></thead>
+        <tbody id="tbUsuarios"></tbody>
+      </table>
+      <p class="vazio" id="vazioUsuarios" style="display:none">Nenhum usuário ainda.</p>
+    </div>
+  </section>
+
+  <!-- ==================== CURSOS ==================== -->
+  <section class="secao" id="sec-cursos">
+    <h2>Cursos, módulos e aulas</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <button class="btn btn-mini" onclick="abrirModalCurso()">+ Novo curso</button>
+    <div id="listaCursos" style="margin-top:16px"></div>
+  </section>
+
+  <!-- ==================== PROVAS ==================== -->
+  <section class="secao" id="sec-provas">
+    <h2>Provas</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <label>Módulo</label>
+      <select id="selModuloProva" onchange="carregarProvasDoModulo()"></select>
+      <button class="btn btn-mini" onclick="criarProva()">+ Nova prova neste módulo</button>
+    </div>
+    <div id="listaProvas"></div>
+  </section>
+
+  <!-- ==================== BIBLIOTECA ==================== -->
+  <section class="secao" id="sec-biblioteca">
+    <h2>Biblioteca</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <h3>Indicar novo livro / material</h3>
+      <label>Título</label><input id="bibTitulo">
+      <label>Autor</label><input id="bibAutor">
+      <label>Descrição</label><textarea id="bibDesc"></textarea>
+      <label>Arquivo PDF (opcional)</label><input type="file" id="bibArquivo" accept=".pdf">
+      <label>Ou link externo (opcional)</label><input id="bibLink" placeholder="https://...">
+      <button class="btn" onclick="salvarLivro()">Adicionar à biblioteca</button>
+      <div class="aviso" id="avisoBib"></div>
+    </div>
+    <div class="grade" id="listaBiblioteca"></div>
+  </section>
+
+  <!-- ==================== GIRAS ==================== -->
+  <section class="secao" id="sec-giras">
+    <h2>Registro de giras</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <h3>Registrar gira</h3>
+      <label>Data</label><input type="date" id="giraData">
+      <label>Título</label><input id="giraTitulo" placeholder="Ex.: Gira de Pretos Velhos">
+      <label>O que aconteceu na gira</label><textarea id="giraDesc"></textarea>
+      <button class="btn" onclick="salvarGira()">Registrar</button>
+      <div class="aviso" id="avisoGira"></div>
+    </div>
+    <div id="listaGiras"></div>
+  </section>
+</main>
+
+<!-- MODAL CURSO -->
+<div class="veu" id="veuCurso">
+  <div class="modal">
+    <h3 id="tituloModalCurso">Novo curso</h3>
+    <label>Título</label><input id="cursoTitulo">
+    <label>Descrição</label><textarea id="cursoDesc"></textarea>
+    <label>Nível de ensino</label>
+    <select id="cursoNivel">
+      <option value="1">Nível 1 — Iniciante</option>
+      <option value="2">Nível 2 — Desenvolvimento</option>
+      <option value="3">Nível 3 — Avançado</option>
+    </select>
+    <button class="btn" onclick="salvarCurso()">Salvar</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuCurso')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL AULA -->
+<div class="veu" id="veuAula">
+  <div class="modal">
+    <h3>Nova aula</h3>
+    <label>Título</label><input id="aulaTitulo">
+    <label>Tipo</label>
+    <select id="aulaTipo" onchange="trocarTipoAula()">
+      <option value="video">Vídeo-aula (link do YouTube)</option>
+      <option value="pdf">Material em PDF</option>
+      <option value="texto">Texto / apostila escrita</option>
+    </select>
+    <div id="campoVideo"><label>Link do YouTube</label><input id="aulaVideo" placeholder="https://youtube.com/..."></div>
+    <div id="campoPdf" style="display:none"><label>Arquivo PDF</label><input type="file" id="aulaPdf" accept=".pdf"></div>
+    <div id="campoTexto" style="display:none"><label>Conteúdo</label><textarea id="aulaConteudo"></textarea></div>
+    <button class="btn" onclick="salvarAula()">Salvar aula</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuAula')">Cancelar</button>
+    <div class="aviso" id="avisoAula"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+let eu = null;
+let cursoEditando = null;
+let moduloDaAula = null;
+
+init();
+async function init() {
+  eu = await exigirLogin();
+  if (!eu) return;
+  if (eu.role !== 'admin') { window.location.href = 'aluno.html'; return; }
+  carregarUsuarios(); carregarCursos(); carregarModulosSelect(); carregarBiblioteca(); carregarGiras();
+}
+
+function irPara(secao) {
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.getElementById('sec-' + secao).classList.add('ativa');
+  document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+}
+function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
+function aviso(id, tipo, msg) { const el = document.getElementById(id); el.className = 'aviso ' + tipo; el.textContent = msg; setTimeout(() => el.className = 'aviso', 4000); }
+
+async function uploadPdf(file, pasta) {
+  const nome = pasta + '/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
+  const { error } = await db.storage.from('materiais').upload(nome, file);
+  if (error) throw error;
+  return db.storage.from('materiais').getPublicUrl(nome).data.publicUrl;
+}
+
+/* ==================== USUÁRIOS ==================== */
+async function carregarUsuarios() {
+  const { data } = await db.from('profiles').select('*').order('created_at', { ascending: false });
+  const tb = document.getElementById('tbUsuarios');
+  tb.innerHTML = '';
+  document.getElementById('vazioUsuarios').style.display = (data || []).length ? 'none' : 'block';
+  (data || []).forEach(u => {
+    tb.innerHTML += `<tr>
+      <td>${escapeHtml(u.nome)} ${u.role === 'admin' ? '<span class="selo azul">direção</span>' : ''}</td>
+      <td>${escapeHtml(u.email)}</td>
+      <td>
+        <select onchange="mudarNivel('${u.id}', this.value)" style="width:auto;padding:5px 8px">
+          ${[1,2,3].map(n => `<option value="${n}" ${u.nivel === n ? 'selected' : ''}>Nível ${n}</option>`).join('')}
+        </select>
+      </td>
+      <td>${u.ativo ? '<span class="selo verde">liberado</span>' : '<span class="selo vermelho">aguardando</span>'}</td>
+      <td>
+        <button class="btn btn-mini ${u.ativo ? 'btn-perigo' : ''}" onclick="alternarAcesso('${u.id}', ${u.ativo})">${u.ativo ? 'Bloquear' : 'Liberar'}</button>
+      </td>
+    </tr>`;
+  });
+}
+async function alternarAcesso(id, ativo) {
+  await db.from('profiles').update({ ativo: !ativo }).eq('id', id);
+  carregarUsuarios();
+}
+async function mudarNivel(id, nivel) {
+  await db.from('profiles').update({ nivel: parseInt(nivel) }).eq('id', id);
+}
+
+/* ==================== CURSOS ==================== */
+function abrirModalCurso() {
+  cursoEditando = null;
+  document.getElementById('tituloModalCurso').textContent = 'Novo curso';
+  ['cursoTitulo','cursoDesc'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('veuCurso').classList.add('aberto');
+}
+async function salvarCurso() {
+  const dados = {
+    titulo: document.getElementById('cursoTitulo').value.trim(),
+    descricao: document.getElementById('cursoDesc').value.trim(),
+    nivel: parseInt(document.getElementById('cursoNivel').value)
+  };
+  if (!dados.titulo) return;
+  if (cursoEditando) await db.from('cursos').update(dados).eq('id', cursoEditando);
+  else await db.from('cursos').insert(dados);
+  fechar('veuCurso'); carregarCursos(); carregarModulosSelect();
+}
+async function apagarCurso(id) {
+  if (!confirm('Apagar este curso e tudo dentro dele?')) return;
+  await db.from('cursos').delete().eq('id', id);
+  carregarCursos(); carregarModulosSelect();
+}
+async function novoModulo(cursoId) {
+  const titulo = prompt('Título do módulo:');
+  if (!titulo) return;
+  await db.from('modulos').insert({ curso_id: cursoId, titulo });
+  carregarCursos(); carregarModulosSelect();
+}
+async function apagarModulo(id) {
+  if (!confirm('Apagar este módulo e suas aulas?')) return;
+  await db.from('modulos').delete().eq('id', id);
+  carregarCursos(); carregarModulosSelect();
+}
+function abrirModalAula(moduloId) {
+  moduloDaAula = moduloId;
+  ['aulaTitulo','aulaVideo','aulaConteudo'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('aulaPdf').value = '';
+  document.getElementById('aulaTipo').value = 'video'; trocarTipoAula();
+  document.getElementById('veuAula').classList.add('aberto');
+}
+function trocarTipoAula() {
+  const t = document.getElementById('aulaTipo').value;
+  document.getElementById('campoVideo').style.display = t === 'video' ? 'block' : 'none';
+  document.getElementById('campoPdf').style.display = t === 'pdf' ? 'block' : 'none';
+  document.getElementById('campoTexto').style.display = t === 'texto' ? 'block' : 'none';
+}
+async function salvarAula() {
+  const tipo = document.getElementById('aulaTipo').value;
+  const dados = { modulo_id: moduloDaAula, titulo: document.getElementById('aulaTitulo').value.trim(), tipo };
+  if (!dados.titulo) return;
+  try {
+    if (tipo === 'video') dados.video_url = document.getElementById('aulaVideo').value.trim();
+    if (tipo === 'texto') dados.conteudo = document.getElementById('aulaConteudo').value;
+    if (tipo === 'pdf') {
+      const f = document.getElementById('aulaPdf').files[0];
+      if (!f) return aviso('avisoAula', 'erro', 'Escolha um arquivo PDF.');
+      aviso('avisoAula', 'ok', 'Enviando arquivo...');
+      dados.arquivo_url = await uploadPdf(f, 'aulas');
+    }
+    await db.from('aulas').insert(dados);
+    fechar('veuAula'); carregarCursos();
+  } catch (e) { aviso('avisoAula', 'erro', 'Erro ao salvar: ' + e.message); }
+}
+async function apagarAula(id) {
+  if (!confirm('Apagar esta aula?')) return;
+  await db.from('aulas').delete().eq('id', id);
+  carregarCursos();
+}
+async function carregarCursos() {
+  const { data: cursos } = await db.from('cursos').select('*, modulos(*, aulas(*))').order('nivel');
+  const el = document.getElementById('listaCursos');
+  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso criado ainda. Comece pelo botão acima.</p>'; return; }
+  el.innerHTML = cursos.map(c => `
+    <div class="cartao">
+      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
+      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+      <button class="btn btn-mini" onclick="novoModulo('${c.id}')">+ Módulo</button>
+      <button class="btn btn-mini btn-perigo" onclick="apagarCurso('${c.id}')">Apagar curso</button>
+      ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+        <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
+          <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+          <button class="btn btn-mini btn-fantasma" onclick="abrirModalAula('${m.id}')">+ Aula</button>
+          <button class="btn btn-mini btn-perigo" onclick="apagarModulo('${m.id}')">Apagar</button>
+          ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
+            <div class="mudo" style="margin:6px 0 0 4px">
+              ${a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎'} ${escapeHtml(a.titulo)}
+              <a onclick="apagarAula('${a.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+/* ==================== PROVAS ==================== */
+async function carregarModulosSelect() {
+  const { data } = await db.from('modulos').select('id, titulo, cursos(titulo)').order('titulo');
+  const sel = document.getElementById('selModuloProva');
+  sel.innerHTML = '<option value="">— Escolha um módulo —</option>' +
+    (data || []).map(m => `<option value="${m.id}">${escapeHtml(m.cursos?.titulo || '')} › ${escapeHtml(m.titulo)}</option>`).join('');
+}
+async function criarProva() {
+  const moduloId = document.getElementById('selModuloProva').value;
+  if (!moduloId) return alert('Escolha um módulo primeiro.');
+  const titulo = prompt('Título da prova:');
+  if (!titulo) return;
+  const nota = prompt('Nota mínima para aprovação (0 a 100):', '70');
+  await db.from('provas').insert({ modulo_id: moduloId, titulo, nota_minima: parseInt(nota) || 70 });
+  carregarProvasDoModulo();
+}
+async function carregarProvasDoModulo() {
+  const moduloId = document.getElementById('selModuloProva').value;
+  const el = document.getElementById('listaProvas');
+  if (!moduloId) { el.innerHTML = ''; return; }
+  const { data: provas } = await db.from('provas').select('*, questoes(*)').eq('modulo_id', moduloId);
+  if (!provas || !provas.length) { el.innerHTML = '<p class="vazio">Este módulo ainda não tem prova.</p>'; return; }
+  el.innerHTML = provas.map(p => `
+    <div class="cartao">
+      <h3>${escapeHtml(p.titulo)} <span class="selo">mínimo ${p.nota_minima}%</span></h3>
+      <p class="mudo">${(p.questoes || []).length} questão(ões)</p>
+      <button class="btn btn-mini" onclick="novaQuestao('${p.id}')">+ Questão</button>
+      <button class="btn btn-mini btn-perigo" onclick="apagarProva('${p.id}')">Apagar prova</button>
+      ${(p.questoes || []).sort((a,b) => a.ordem - b.ordem).map((q, i) => `
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(201,162,39,.08)">
+          <strong>${i + 1}.</strong> ${escapeHtml(q.enunciado)}
+          <a onclick="apagarQuestao('${q.id}','${p.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
+          <div class="mudo" style="font-size:.85rem; margin-top:4px">
+            a) ${escapeHtml(q.opcao_a)} &nbsp; b) ${escapeHtml(q.opcao_b)} &nbsp; c) ${escapeHtml(q.opcao_c)} &nbsp; d) ${escapeHtml(q.opcao_d)}
+            &nbsp; <span class="selo verde">correta: ${q.correta}</span>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+async function novaQuestao(provaId) {
+  const enunciado = prompt('Enunciado da questão:'); if (!enunciado) return;
+  const a = prompt('Alternativa A:'); if (a === null) return;
+  const b = prompt('Alternativa B:'); if (b === null) return;
+  const c = prompt('Alternativa C:'); if (c === null) return;
+  const d = prompt('Alternativa D:'); if (d === null) return;
+  const correta = (prompt('Qual é a correta? (a, b, c ou d)') || '').toLowerCase().trim();
+  if (!['a','b','c','d'].includes(correta)) return alert('Resposta correta inválida.');
+  await db.from('questoes').insert({ prova_id: provaId, enunciado, opcao_a: a, opcao_b: b, opcao_c: c, opcao_d: d, correta });
+  carregarProvasDoModulo();
+}
+async function apagarProva(id) { if (confirm('Apagar prova?')) { await db.from('provas').delete().eq('id', id); carregarProvasDoModulo(); } }
+async function apagarQuestao(id) { await db.from('questoes').delete().eq('id', id); carregarProvasDoModulo(); }
+
+/* ==================== BIBLIOTECA ==================== */
+async function salvarLivro() {
+  const titulo = document.getElementById('bibTitulo').value.trim();
+  if (!titulo) return aviso('avisoBib', 'erro', 'Informe o título.');
+  const dados = {
+    titulo,
+    autor: document.getElementById('bibAutor').value.trim(),
+    descricao: document.getElementById('bibDesc').value.trim(),
+    link: document.getElementById('bibLink').value.trim() || null
+  };
+  try {
+    const f = document.getElementById('bibArquivo').files[0];
+    if (f) { aviso('avisoBib', 'ok', 'Enviando arquivo...'); dados.arquivo_url = await uploadPdf(f, 'biblioteca'); }
+    await db.from('biblioteca').insert(dados);
+    ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('bibArquivo').value = '';
+    aviso('avisoBib', 'ok', 'Material adicionado à biblioteca.');
+    carregarBiblioteca();
+  } catch (e) { aviso('avisoBib', 'erro', 'Erro: ' + e.message); }
+}
+async function apagarLivro(id) { if (confirm('Remover da biblioteca?')) { await db.from('biblioteca').delete().eq('id', id); carregarBiblioteca(); } }
+async function carregarBiblioteca() {
+  const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
+  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+    <div class="cartao">
+      <h3>${escapeHtml(l.titulo)}</h3>
+      <p class="mudo">${escapeHtml(l.autor || '')}</p>
+      <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
+      ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Abrir PDF</a>` : ''}
+      ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
+      <button class="btn btn-mini btn-perigo" onclick="apagarLivro('${l.id}')">Remover</button>
+    </div>`).join('') || '<p class="vazio">Biblioteca vazia.</p>';
+}
+
+/* ==================== GIRAS ==================== */
+async function salvarGira() {
+  const dados = {
+    data: document.getElementById('giraData').value,
+    titulo: document.getElementById('giraTitulo').value.trim(),
+    descricao: document.getElementById('giraDesc').value.trim()
+  };
+  if (!dados.data || !dados.titulo) return aviso('avisoGira', 'erro', 'Informe data e título.');
+  await db.from('giras').insert(dados);
+  ['giraData','giraTitulo','giraDesc'].forEach(i => document.getElementById(i).value = '');
+  aviso('avisoGira', 'ok', 'Gira registrada.');
+  carregarGiras();
+}
+async function apagarGira(id) { if (confirm('Apagar registro?')) { await db.from('giras').delete().eq('id', id); carregarGiras(); } }
+async function carregarGiras() {
+  const { data } = await db.from('giras').select('*').order('data', { ascending: false });
+  document.getElementById('listaGiras').innerHTML = (data || []).map(g => `
+    <div class="cartao">
+      <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
+      <button class="btn btn-mini btn-perigo" onclick="apagarGira('${g.id}')">Apagar</button>
+    </div>`).join('') || '<p class="vazio">Nenhuma gira registrada.</p>';
+}
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa de Estudo — Meu caminho</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <div class="simbolo">✦</div>
+    <div>
+      <h1>Casa de Estudo</h1>
+      <small id="saudacao">Meu caminho</small>
+    </div>
+  </div>
+  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+</header>
+
+<nav class="abas">
+  <button class="aba ativa" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
+  <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+</nav>
+
+<main class="conteudo">
+
+  <!-- ==================== ESTUDOS ==================== -->
+  <section class="secao ativa" id="sec-cursos">
+    <h2>Meus estudos</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="listaCursos"></div>
+  </section>
+
+  <!-- ==================== BIBLIOTECA ==================== -->
+  <section class="secao" id="sec-biblioteca">
+    <h2>Biblioteca da casa</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div class="grade" id="listaBiblioteca"></div>
+  </section>
+
+  <!-- ==================== GIRAS ==================== -->
+  <section class="secao" id="sec-giras">
+    <h2>Giras e minhas anotações</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="listaGiras"></div>
+  </section>
+</main>
+
+<!-- MODAL AULA -->
+<div class="veu" id="veuAula">
+  <div class="modal" style="max-width:760px">
+    <h3 id="aulaModalTitulo"></h3>
+    <div id="aulaModalCorpo" style="margin-top:14px"></div>
+    <button class="btn" id="btnConcluirAula">Marcar como concluída</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuAula')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL PROVA -->
+<div class="veu" id="veuProva">
+  <div class="modal" style="max-width:700px">
+    <h3 id="provaModalTitulo"></h3>
+    <div id="provaModalCorpo" style="margin-top:14px"></div>
+    <button class="btn" id="btnEntregarProva" onclick="entregarProva()">Entregar prova</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuProva')">Fechar</button>
+    <div class="aviso" id="avisoProva"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+let eu = null;
+let concluidas = new Set();
+let provaAberta = null;
+
+init();
+async function init() {
+  eu = await exigirLogin();
+  if (!eu) return;
+  if (eu.role === 'admin') { window.location.href = 'admin.html'; return; }
+  if (!eu.ativo) { await sair(); return; }
+  document.getElementById('saudacao').textContent = 'Axé, ' + eu.nome.split(' ')[0] + ' · Nível ' + eu.nivel;
+  await carregarProgresso();
+  carregarCursos(); carregarBiblioteca(); carregarGiras();
+}
+
+function irPara(secao) {
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.getElementById('sec-' + secao).classList.add('ativa');
+  document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+}
+function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
+
+/* ==================== ESTUDOS ==================== */
+async function carregarProgresso() {
+  const { data } = await db.from('progresso_aulas').select('aula_id').eq('aluno_id', eu.id);
+  concluidas = new Set((data || []).map(p => p.aula_id));
+}
+
+async function carregarCursos() {
+  const { data: cursos } = await db.from('cursos')
+    .select('*, modulos(*, aulas(*), provas(*))')
+    .eq('ativo', true).lte('nivel', eu.nivel).order('nivel');
+  const { data: resultados } = await db.from('resultados_provas').select('*').eq('aluno_id', eu.id);
+  const aprovadas = new Set((resultados || []).filter(r => r.aprovado).map(r => r.prova_id));
+
+  const el = document.getElementById('listaCursos');
+  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso liberado para o seu nível ainda.</p>'; return; }
+
+  el.innerHTML = cursos.map(c => {
+    const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
+    const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
+    const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+    return `
+    <div class="cartao">
+      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
+      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+      <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+        <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
+      </div>
+      <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
+      ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+        <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
+          <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+          ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
+            <div style="margin:8px 0 0 4px">
+              <a onclick='abrirAula(${JSON.stringify(a).replace(/'/g, "&#39;")})' style="cursor:pointer">
+                ${concluidas.has(a.id) ? '<span style="color:var(--erva)">✔</span>' : (a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎')}
+                ${escapeHtml(a.titulo)}
+              </a>
+            </div>`).join('')}
+          ${(m.provas || []).map(p => `
+            <div style="margin:10px 0 0 4px">
+              ${aprovadas.has(p.id)
+                ? `<span class="selo verde">✔ Prova concluída: ${escapeHtml(p.titulo)}</span>`
+                : `<button class="btn btn-mini" onclick="abrirProva('${p.id}')">Fazer prova: ${escapeHtml(p.titulo)}</button>`}
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function abrirAula(aula) {
+  document.getElementById('aulaModalTitulo').textContent = aula.titulo;
+  let corpo = '';
+  if (aula.tipo === 'video') corpo = `<iframe class="video" src="${youtubeEmbed(aula.video_url)}" allowfullscreen></iframe>`;
+  if (aula.tipo === 'pdf') corpo = `<a href="${aula.arquivo_url}" target="_blank" class="btn btn-fantasma">Abrir material em PDF</a>`;
+  if (aula.tipo === 'texto') corpo = `<div style="white-space:pre-wrap; line-height:1.7">${escapeHtml(aula.conteudo || '')}</div>`;
+  document.getElementById('aulaModalCorpo').innerHTML = corpo;
+  const btn = document.getElementById('btnConcluirAula');
+  if (concluidas.has(aula.id)) { btn.style.display = 'none'; }
+  else {
+    btn.style.display = 'inline-block';
+    btn.onclick = async () => {
+      await db.from('progresso_aulas').insert({ aluno_id: eu.id, aula_id: aula.id });
+      concluidas.add(aula.id);
+      fechar('veuAula'); carregarCursos();
+    };
+  }
+  document.getElementById('veuAula').classList.add('aberto');
+}
+
+/* ==================== PROVAS ==================== */
+async function abrirProva(provaId) {
+  const { data: prova } = await db.from('provas').select('*, questoes(*)').eq('id', provaId).single();
+  if (!prova || !(prova.questoes || []).length) return alert('Esta prova ainda não tem questões.');
+  provaAberta = prova;
+  document.getElementById('provaModalTitulo').textContent = prova.titulo;
+  document.getElementById('provaModalCorpo').innerHTML =
+    `<p class="mudo">Nota mínima para aprovação: ${prova.nota_minima}%</p>` +
+    prova.questoes.sort((a,b) => a.ordem - b.ordem).map((q, i) => `
+      <div style="margin-top:18px">
+        <strong>${i + 1}. ${escapeHtml(q.enunciado)}</strong>
+        ${['a','b','c','d'].map(op => `
+          <label style="display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; font-size:.95rem; color:var(--oxala); cursor:pointer; margin:8px 0 0">
+            <input type="radio" name="q_${q.id}" value="${op}" style="width:auto"> ${escapeHtml(q['opcao_' + op])}
+          </label>`).join('')}
+      </div>`).join('');
+  document.getElementById('btnEntregarProva').style.display = 'inline-block';
+  document.getElementById('veuProva').classList.add('aberto');
+}
+
+async function entregarProva() {
+  const qs = provaAberta.questoes;
+  let acertos = 0, respondidas = 0;
+  qs.forEach(q => {
+    const marcada = document.querySelector(`input[name="q_${q.id}"]:checked`);
+    if (marcada) { respondidas++; if (marcada.value === q.correta) acertos++; }
+  });
+  if (respondidas < qs.length) {
+    const el = document.getElementById('avisoProva');
+    el.className = 'aviso erro'; el.textContent = 'Responda todas as questões antes de entregar.';
+    return;
+  }
+  const nota = Math.round(acertos / qs.length * 100);
+  const aprovado = nota >= provaAberta.nota_minima;
+  await db.from('resultados_provas').insert({ prova_id: provaAberta.id, aluno_id: eu.id, nota, aprovado });
+  const el = document.getElementById('avisoProva');
+  el.className = 'aviso ' + (aprovado ? 'ok' : 'erro');
+  el.textContent = aprovado
+    ? `Aprovado, axé! Sua nota: ${nota}%.`
+    : `Nota: ${nota}%. Mínimo: ${provaAberta.nota_minima}%. Estude mais um pouco e tente novamente.`;
+  document.getElementById('btnEntregarProva').style.display = 'none';
+  carregarCursos();
+}
+
+/* ==================== BIBLIOTECA ==================== */
+async function carregarBiblioteca() {
+  const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
+  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+    <div class="cartao">
+      <h3>${escapeHtml(l.titulo)}</h3>
+      <p class="mudo">${escapeHtml(l.autor || '')}</p>
+      <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
+      ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Ler PDF</a>` : ''}
+      ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
+    </div>`).join('') || '<p class="vazio">A biblioteca ainda está vazia.</p>';
+}
+
+/* ==================== GIRAS ==================== */
+async function carregarGiras() {
+  const { data: giras } = await db.from('giras').select('*').order('data', { ascending: false });
+  const { data: minhas } = await db.from('anotacoes_gira').select('*').eq('aluno_id', eu.id);
+  const mapa = {}; (minhas || []).forEach(a => mapa[a.gira_id] = a);
+
+  document.getElementById('listaGiras').innerHTML = (giras || []).map(g => {
+    const nota = mapa[g.id];
+    return `
+    <div class="cartao">
+      <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
+      <label>Minhas anotações pós-gira</label>
+      <textarea id="nota_${g.id}">${escapeHtml(nota ? nota.texto : '')}</textarea>
+      <button class="btn btn-mini" onclick="salvarAnotacao('${g.id}', ${nota ? `'${nota.id}'` : 'null'})">Guardar anotação</button>
+      <span class="mudo" id="ok_${g.id}" style="font-size:.8rem"></span>
+    </div>`;
+  }).join('') || '<p class="vazio">Nenhuma gira registrada ainda.</p>';
+}
+async function salvarAnotacao(giraId, anotacaoId) {
+  const texto = document.getElementById('nota_' + giraId).value.trim();
+  if (!texto) return;
+  if (anotacaoId) await db.from('anotacoes_gira').update({ texto }).eq('id', anotacaoId);
+  else await db.from('anotacoes_gira').insert({ gira_id: giraId, aluno_id: eu.id, texto });
+  document.getElementById('ok_' + giraId).textContent = ' ✔ guardado';
+  setTimeout(() => carregarGiras(), 800);
+}
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa de Estudo — Entrada</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  body { display: grid; place-items: center; padding: 20px; }
+  .portal { width: 100%; max-width: 420px; text-align: center; animation: surge .6s ease; }
+  .vela {
+    width: 74px; height: 74px; margin: 0 auto 20px; border: 1px solid var(--ouro);
+    border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; color: var(--ouro-claro);
+    box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18);
+    animation: chama 4s ease-in-out infinite;
+  }
+  @keyframes chama {
+    0%, 100% { box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18); }
+    50% { box-shadow: 0 0 42px rgba(201,162,39,.42), 0 0 80px rgba(201,162,39,.18), inset 0 0 26px rgba(201,162,39,.24); }
+  }
+  .portal h1 { font-size: 2.3rem; margin-bottom: 4px; }
+  .portal .sub { color: var(--ouro); letter-spacing: .3em; text-transform: uppercase; font-size: .7rem; margin-bottom: 26px; }
+  .portal .cartao { text-align: left; }
+  .troca { margin-top: 18px; font-size: .88rem; color: var(--oxala-2); }
+  .troca a { cursor: pointer; }
+</style>
+</head>
+<body>
+  <main class="portal">
+    <div class="vela">🕯</div>
+    <h1>Casa de Estudo</h1>
+    <p class="sub">Escola de Formação Mediúnica</p>
+
+    <!-- LOGIN -->
+    <div class="cartao" id="cxLogin">
+      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" type="email" autocomplete="email">
+      <label for="loginSenha">Senha</label>
+      <input id="loginSenha" type="password" autocomplete="current-password">
+      <button class="btn" style="width:100%" onclick="entrar()">Entrar na casa</button>
+      <div class="aviso" id="avisoLogin"></div>
+      <p class="troca">Ainda não faz parte? <a onclick="mostrar('cadastro')">Solicitar acesso</a></p>
+    </div>
+
+    <!-- CADASTRO -->
+    <div class="cartao" id="cxCadastro" style="display:none">
+      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+      <label for="cadNome">Nome completo</label>
+      <input id="cadNome" type="text" autocomplete="name">
+      <label for="cadEmail">E-mail</label>
+      <input id="cadEmail" type="email" autocomplete="email">
+      <label for="cadSenha">Senha (mínimo 6 caracteres)</label>
+      <input id="cadSenha" type="password" autocomplete="new-password">
+      <button class="btn" style="width:100%" onclick="cadastrar()">Solicitar acesso</button>
+      <div class="aviso" id="avisoCad"></div>
+      <p class="troca">Já tem acesso? <a onclick="mostrar('login')">Entrar</a></p>
+    </div>
+  </main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+function mostrar(qual) {
+  document.getElementById('cxLogin').style.display = qual === 'login' ? 'block' : 'none';
+  document.getElementById('cxCadastro').style.display = qual === 'cadastro' ? 'block' : 'none';
+}
+function aviso(id, tipo, msg) {
+  const el = document.getElementById(id);
+  el.className = 'aviso ' + tipo; el.textContent = msg;
+}
+
+async function entrar() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  if (!email || !senha) return aviso('avisoLogin', 'erro', 'Preencha e-mail e senha.');
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+  if (error) return aviso('avisoLogin', 'erro', 'E-mail ou senha incorretos.');
+
+  const { data: perfil } = await db.from('profiles').select('*').eq('id', data.user.id).single();
+  if (!perfil) return aviso('avisoLogin', 'erro', 'Perfil não encontrado.');
+
+  if (perfil.role === 'admin') { window.location.href = 'admin.html'; return; }
+  if (!perfil.ativo) {
+    await db.auth.signOut();
+    return aviso('avisoLogin', 'erro', 'Seu acesso ainda não foi liberado pela direção da casa. Aguarde a aprovação.');
+  }
+  window.location.href = 'aluno.html';
+}
+
+async function cadastrar() {
+  const nome = document.getElementById('cadNome').value.trim();
+  const email = document.getElementById('cadEmail').value.trim();
+  const senha = document.getElementById('cadSenha').value;
+  if (!nome || !email || senha.length < 6) return aviso('avisoCad', 'erro', 'Preencha tudo. Senha com no mínimo 6 caracteres.');
+
+  const { error } = await db.auth.signUp({ email, password: senha, options: { data: { nome } } });
+  if (error) return aviso('avisoCad', 'erro', 'Não foi possível cadastrar: ' + error.message);
+  aviso('avisoCad', 'ok', 'Solicitação enviada, axé! Assim que a direção liberar seu acesso, você poderá entrar.');
+}
+
+// Enter envia
+document.getElementById('loginSenha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+</script>
+</body>
+</html>
+
+# Casa de Estudo — Plataforma de Ensino
+
+Sistema de ensino para casa religiosa. HTML puro + Supabase + GitHub Pages.
+
+## O que já funciona nesta versão
+
+- Login e solicitação de acesso (aluno se cadastra e fica aguardando aprovação)
+- Painel da direção (admin): liberar/bloquear usuários, definir nível de cada aluno
+- Cursos por nível de ensino, com módulos e aulas (vídeo do YouTube, PDF ou texto)
+- Upload de PDF (material didático) direto pelo painel
+- Provas por módulo com questões de múltipla escolha e correção automática
+- Biblioteca com livros indicados (PDF ou link)
+- Registro de giras pelo admin + anotações pós-gira de cada aluno
+- Barra de progresso do aluno em cada curso
+
+Ainda não incluído (próximas etapas): certificado de conclusão, trilha do médium (agenda de estudos).
+
+## Passo a passo para colocar no ar
+
+### 1. Criar o projeto no Supabase
+1. Entre em https://supabase.com e crie um projeto novo.
+2. Vá em **SQL Editor**, cole todo o conteúdo do arquivo `supabase.sql` e clique em **Run**.
+3. Vá em **Storage > New bucket**, crie um bucket chamado exatamente `materiais` e marque **Public bucket**.
+4. Vá em **Authentication > Providers > Email** e desative "Confirm email" (assim o cadastro não exige confirmação por e-mail). Se preferir manter, o aluno vai precisar confirmar o e-mail antes de aparecer no painel.
+
+### 2. Configurar o site
+1. Vá em **Settings > API** no Supabase.
+2. Copie a **Project URL** e a chave **anon public**.
+3. Abra o arquivo `js/config.js` e cole os dois valores nos lugares indicados.
+
+### 3. Criar o primeiro admin
+1. Abra o site, clique em "Solicitar acesso" e cadastre-se com o seu e-mail.
+2. Volte ao **SQL Editor** do Supabase e rode (trocando o e-mail):
+```sql
+update public.profiles set role = 'admin', ativo = true where email = 'SEU_EMAIL_AQUI';
+```
+3. Faça login. Você cairá direto no painel da direção.
+
+### 4. Publicar no GitHub Pages
+1. Crie um repositório no GitHub e envie todos os arquivos desta pasta.
+2. No repositório: **Settings > Pages > Source: Deploy from a branch > main > / (root)** > Save.
+3. Em alguns minutos o site estará no ar em `https://SEU_USUARIO.github.io/NOME_DO_REPOSITORIO`.
+
+## Estrutura dos arquivos
+
+```
+index.html        → login e solicitação de acesso
+admin.html        → painel da direção
+aluno.html        → portal do aluno
+supabase.sql      → banco de dados completo (rodar no Supabase)
+js/config.js      → configuração (URL e chave do Supabase)
+assets/style.css  → identidade visual
+```
+
+## Fluxo de uso
+
+1. Aluno solicita acesso pelo site → fica "aguardando".
+2. Admin libera o acesso e define o nível do aluno (1, 2 ou 3).
+3. Admin cria cursos por nível, módulos, aulas e provas.
+4. Aluno vê somente os cursos do seu nível (ou abaixo), assiste às aulas, marca como concluídas e faz as provas.
+5. Admin registra o que aconteceu em cada gira; o aluno escreve as anotações pessoais dele.
+
+-- ============================================================
+-- CASA DE ESTUDO — Banco de dados Supabase
+-- Rode este arquivo inteiro no SQL Editor do Supabase
+-- ============================================================
+
+-- 1. PERFIS (ligado ao auth.users)
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nome text not null,
+  email text not null,
+  role text not null default 'aluno' check (role in ('admin','aluno')),
+  nivel int not null default 1,
+  ativo boolean not null default false,
+  created_at timestamptz default now()
+);
+
+-- Cria o perfil automaticamente quando alguém se cadastra
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, nome, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'nome', 'Sem nome'), new.email);
+  return new;
+end; $$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- 2. CURSOS / MÓDULOS / AULAS
+create table public.cursos (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  descricao text,
+  nivel int not null default 1,
+  ordem int not null default 0,
+  ativo boolean not null default true,
+  created_at timestamptz default now()
+);
+
+create table public.modulos (
+  id uuid primary key default gen_random_uuid(),
+  curso_id uuid not null references public.cursos(id) on delete cascade,
+  titulo text not null,
+  descricao text,
+  ordem int not null default 0
+);
+
+create table public.aulas (
+  id uuid primary key default gen_random_uuid(),
+  modulo_id uuid not null references public.modulos(id) on delete cascade,
+  titulo text not null,
+  tipo text not null default 'video' check (tipo in ('video','pdf','texto')),
+  video_url text,      -- link do YouTube/Vimeo
+  arquivo_url text,    -- PDF no Storage
+  conteudo text,       -- texto da aula
+  ordem int not null default 0
+);
+
+-- 3. PROVAS
+create table public.provas (
+  id uuid primary key default gen_random_uuid(),
+  modulo_id uuid not null references public.modulos(id) on delete cascade,
+  titulo text not null,
+  nota_minima int not null default 70
+);
+
+create table public.questoes (
+  id uuid primary key default gen_random_uuid(),
+  prova_id uuid not null references public.provas(id) on delete cascade,
+  enunciado text not null,
+  opcao_a text not null,
+  opcao_b text not null,
+  opcao_c text not null,
+  opcao_d text not null,
+  correta text not null check (correta in ('a','b','c','d')),
+  ordem int not null default 0
+);
+
+create table public.resultados_provas (
+  id uuid primary key default gen_random_uuid(),
+  prova_id uuid not null references public.provas(id) on delete cascade,
+  aluno_id uuid not null references public.profiles(id) on delete cascade,
+  nota int not null,
+  aprovado boolean not null,
+  created_at timestamptz default now()
+);
+
+-- 4. PROGRESSO DO ALUNO
+create table public.progresso_aulas (
+  id uuid primary key default gen_random_uuid(),
+  aluno_id uuid not null references public.profiles(id) on delete cascade,
+  aula_id uuid not null references public.aulas(id) on delete cascade,
+  created_at timestamptz default now(),
+  unique (aluno_id, aula_id)
+);
+
+-- 5. BIBLIOTECA
+create table public.biblioteca (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  autor text,
+  descricao text,
+  arquivo_url text,   -- PDF no Storage (opcional)
+  link text,          -- link externo (opcional)
+  created_at timestamptz default now()
+);
+
+-- 6. GIRAS E ANOTAÇÕES
+create table public.giras (
+  id uuid primary key default gen_random_uuid(),
+  data date not null,
+  titulo text not null,
+  descricao text,     -- o que aconteceu na gira (escrito pelo admin)
+  created_at timestamptz default now()
+);
+
+create table public.anotacoes_gira (
+  id uuid primary key default gen_random_uuid(),
+  gira_id uuid not null references public.giras(id) on delete cascade,
+  aluno_id uuid not null references public.profiles(id) on delete cascade,
+  texto text not null,
+  created_at timestamptz default now(),
+  unique (gira_id, aluno_id)
+);
+
+-- ============================================================
+-- SEGURANÇA (RLS)
+-- ============================================================
+alter table public.profiles enable row level security;
+alter table public.cursos enable row level security;
+alter table public.modulos enable row level security;
+alter table public.aulas enable row level security;
+alter table public.provas enable row level security;
+alter table public.questoes enable row level security;
+alter table public.resultados_provas enable row level security;
+alter table public.progresso_aulas enable row level security;
+alter table public.biblioteca enable row level security;
+alter table public.giras enable row level security;
+alter table public.anotacoes_gira enable row level security;
+
+-- Função auxiliar: sou admin?
+create or replace function public.is_admin()
+returns boolean language sql security definer set search_path = public as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
+$$;
+
+-- Função auxiliar: sou aluno ativo?
+create or replace function public.is_ativo()
+returns boolean language sql security definer set search_path = public as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and ativo = true);
+$$;
+
+-- PROFILES
+create policy "ver proprio perfil" on public.profiles for select using (auth.uid() = id);
+create policy "admin ve todos perfis" on public.profiles for select using (public.is_admin());
+create policy "admin edita perfis" on public.profiles for update using (public.is_admin());
+
+-- CONTEÚDO (cursos, módulos, aulas, provas, questões, biblioteca, giras)
+-- Aluno ativo lê. Admin faz tudo.
+create policy "ler cursos" on public.cursos for select using (public.is_ativo());
+create policy "admin cursos" on public.cursos for all using (public.is_admin());
+
+create policy "ler modulos" on public.modulos for select using (public.is_ativo());
+create policy "admin modulos" on public.modulos for all using (public.is_admin());
+
+create policy "ler aulas" on public.aulas for select using (public.is_ativo());
+create policy "admin aulas" on public.aulas for all using (public.is_admin());
+
+create policy "ler provas" on public.provas for select using (public.is_ativo());
+create policy "admin provas" on public.provas for all using (public.is_admin());
+
+create policy "ler questoes" on public.questoes for select using (public.is_ativo());
+create policy "admin questoes" on public.questoes for all using (public.is_admin());
+
+create policy "ler biblioteca" on public.biblioteca for select using (public.is_ativo());
+create policy "admin biblioteca" on public.biblioteca for all using (public.is_admin());
+
+create policy "ler giras" on public.giras for select using (public.is_ativo());
+create policy "admin giras" on public.giras for all using (public.is_admin());
+
+-- DADOS DO ALUNO
+create policy "aluno insere resultado" on public.resultados_provas for insert with check (auth.uid() = aluno_id);
+create policy "aluno ve seus resultados" on public.resultados_provas for select using (auth.uid() = aluno_id);
+create policy "admin ve resultados" on public.resultados_provas for select using (public.is_admin());
+
+create policy "aluno marca progresso" on public.progresso_aulas for insert with check (auth.uid() = aluno_id);
+create policy "aluno ve progresso" on public.progresso_aulas for select using (auth.uid() = aluno_id);
+create policy "admin ve progresso" on public.progresso_aulas for select using (public.is_admin());
+
+create policy "aluno cria anotacao" on public.anotacoes_gira for insert with check (auth.uid() = aluno_id);
+create policy "aluno edita anotacao" on public.anotacoes_gira for update using (auth.uid() = aluno_id);
+create policy "aluno ve anotacao" on public.anotacoes_gira for select using (auth.uid() = aluno_id);
+create policy "admin ve anotacoes" on public.anotacoes_gira for select using (public.is_admin());
+
+-- ============================================================
+-- STORAGE (arquivos PDF)
+-- Crie um bucket chamado: materiais  (público)
+-- Depois rode as policies abaixo:
+-- ============================================================
+-- No painel do Supabase: Storage > New bucket > nome "materiais" > Public bucket ON
+create policy "admin envia arquivos" on storage.objects for insert
+  with check (bucket_id = 'materiais' and public.is_admin());
+create policy "admin apaga arquivos" on storage.objects for delete
+  using (bucket_id = 'materiais' and public.is_admin());
+create policy "todos leem arquivos" on storage.objects for select
+  using (bucket_id = 'materiais');
+
+-- ============================================================
+-- DEPOIS DE CRIAR SUA CONTA NO SITE, RODE ISTO PARA VIRAR ADMIN
+-- (troque o email pelo seu)
+-- ============================================================
+-- update public.profiles set role = 'admin', ativo = true where email = 'SEU_EMAIL_AQUI';
