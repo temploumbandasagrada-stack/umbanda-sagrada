@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa de Estudo — Meu caminho</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <div class="simbolo">✦</div>
+    <div>
+      <h1>Casa de Estudo</h1>
+      <small id="saudacao">Meu caminho</small>
+    </div>
+  </div>
+  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+</header>
+
+<nav class="abas">
+  <button class="aba ativa" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
+  <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+</nav>
+
+<main class="conteudo">
+
+  <!-- ==================== ESTUDOS ==================== -->
+  <section class="secao ativa" id="sec-cursos">
+    <h2>Meus estudos</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="listaCursos"></div>
+  </section>
+
+  <!-- ==================== BIBLIOTECA ==================== -->
+  <section class="secao" id="sec-biblioteca">
+    <h2>Biblioteca da casa</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div class="grade" id="listaBiblioteca"></div>
+  </section>
+
+  <!-- ==================== GIRAS ==================== -->
+  <section class="secao" id="sec-giras">
+    <h2>Giras e minhas anotações</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="listaGiras"></div>
+  </section>
+</main>
+
+<!-- MODAL AULA -->
+<div class="veu" id="veuAula">
+  <div class="modal" style="max-width:760px">
+    <h3 id="aulaModalTitulo"></h3>
+    <div id="aulaModalCorpo" style="margin-top:14px"></div>
+    <button class="btn" id="btnConcluirAula">Marcar como concluída</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuAula')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL PROVA -->
+<div class="veu" id="veuProva">
+  <div class="modal" style="max-width:700px">
+    <h3 id="provaModalTitulo"></h3>
+    <div id="provaModalCorpo" style="margin-top:14px"></div>
+    <button class="btn" id="btnEntregarProva" onclick="entregarProva()">Entregar prova</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuProva')">Fechar</button>
+    <div class="aviso" id="avisoProva"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+let eu = null;
+let concluidas = new Set();
+let provaAberta = null;
+
+init();
+async function init() {
+  eu = await exigirLogin();
+  if (!eu) return;
+  if (eu.role === 'admin') { window.location.href = 'admin.html'; return; }
+  if (!eu.ativo) { await sair(); return; }
+  document.getElementById('saudacao').textContent = 'Axé, ' + eu.nome.split(' ')[0] + ' · Nível ' + eu.nivel;
+  await carregarProgresso();
+  carregarCursos(); carregarBiblioteca(); carregarGiras();
+}
+
+function irPara(secao) {
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.getElementById('sec-' + secao).classList.add('ativa');
+  document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+}
+function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
+
+/* ==================== ESTUDOS ==================== */
+async function carregarProgresso() {
+  const { data } = await db.from('progresso_aulas').select('aula_id').eq('aluno_id', eu.id);
+  concluidas = new Set((data || []).map(p => p.aula_id));
+}
+
+async function carregarCursos() {
+  const { data: cursos } = await db.from('cursos')
+    .select('*, modulos(*, aulas(*), provas(*))')
+    .eq('ativo', true).lte('nivel', eu.nivel).order('nivel');
+  const { data: resultados } = await db.from('resultados_provas').select('*').eq('aluno_id', eu.id);
+  const aprovadas = new Set((resultados || []).filter(r => r.aprovado).map(r => r.prova_id));
+
+  const el = document.getElementById('listaCursos');
+  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso liberado para o seu nível ainda.</p>'; return; }
+
+  el.innerHTML = cursos.map(c => {
+    const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
+    const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
+    const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+    return `
+    <div class="cartao">
+      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
+      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+      <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+        <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
+      </div>
+      <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
+      ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+        <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
+          <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+          ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
+            <div style="margin:8px 0 0 4px">
+              <a onclick='abrirAula(${JSON.stringify(a).replace(/'/g, "&#39;")})' style="cursor:pointer">
+                ${concluidas.has(a.id) ? '<span style="color:var(--erva)">✔</span>' : (a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎')}
+                ${escapeHtml(a.titulo)}
+              </a>
+            </div>`).join('')}
+          ${(m.provas || []).map(p => `
+            <div style="margin:10px 0 0 4px">
+              ${aprovadas.has(p.id)
+                ? `<span class="selo verde">✔ Prova concluída: ${escapeHtml(p.titulo)}</span>`
+                : `<button class="btn btn-mini" onclick="abrirProva('${p.id}')">Fazer prova: ${escapeHtml(p.titulo)}</button>`}
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+function abrirAula(aula) {
+  document.getElementById('aulaModalTitulo').textContent = aula.titulo;
+  let corpo = '';
+  if (aula.tipo === 'video') corpo = `<iframe class="video" src="${youtubeEmbed(aula.video_url)}" allowfullscreen></iframe>`;
+  if (aula.tipo === 'pdf') corpo = `<a href="${aula.arquivo_url}" target="_blank" class="btn btn-fantasma">Abrir material em PDF</a>`;
+  if (aula.tipo === 'texto') corpo = `<div style="white-space:pre-wrap; line-height:1.7">${escapeHtml(aula.conteudo || '')}</div>`;
+  document.getElementById('aulaModalCorpo').innerHTML = corpo;
+  const btn = document.getElementById('btnConcluirAula');
+  if (concluidas.has(aula.id)) { btn.style.display = 'none'; }
+  else {
+    btn.style.display = 'inline-block';
+    btn.onclick = async () => {
+      await db.from('progresso_aulas').insert({ aluno_id: eu.id, aula_id: aula.id });
+      concluidas.add(aula.id);
+      fechar('veuAula'); carregarCursos();
+    };
+  }
+  document.getElementById('veuAula').classList.add('aberto');
+}
+
+/* ==================== PROVAS ==================== */
+async function abrirProva(provaId) {
+  const { data: prova } = await db.from('provas').select('*, questoes(*)').eq('id', provaId).single();
+  if (!prova || !(prova.questoes || []).length) return alert('Esta prova ainda não tem questões.');
+  provaAberta = prova;
+  document.getElementById('provaModalTitulo').textContent = prova.titulo;
+  document.getElementById('provaModalCorpo').innerHTML =
+    `<p class="mudo">Nota mínima para aprovação: ${prova.nota_minima}%</p>` +
+    prova.questoes.sort((a,b) => a.ordem - b.ordem).map((q, i) => `
+      <div style="margin-top:18px">
+        <strong>${i + 1}. ${escapeHtml(q.enunciado)}</strong>
+        ${['a','b','c','d'].map(op => `
+          <label style="display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; font-size:.95rem; color:var(--oxala); cursor:pointer; margin:8px 0 0">
+            <input type="radio" name="q_${q.id}" value="${op}" style="width:auto"> ${escapeHtml(q['opcao_' + op])}
+          </label>`).join('')}
+      </div>`).join('');
+  document.getElementById('btnEntregarProva').style.display = 'inline-block';
+  document.getElementById('veuProva').classList.add('aberto');
+}
+
+async function entregarProva() {
+  const qs = provaAberta.questoes;
+  let acertos = 0, respondidas = 0;
+  qs.forEach(q => {
+    const marcada = document.querySelector(`input[name="q_${q.id}"]:checked`);
+    if (marcada) { respondidas++; if (marcada.value === q.correta) acertos++; }
+  });
+  if (respondidas < qs.length) {
+    const el = document.getElementById('avisoProva');
+    el.className = 'aviso erro'; el.textContent = 'Responda todas as questões antes de entregar.';
+    return;
+  }
+  const nota = Math.round(acertos / qs.length * 100);
+  const aprovado = nota >= provaAberta.nota_minima;
+  await db.from('resultados_provas').insert({ prova_id: provaAberta.id, aluno_id: eu.id, nota, aprovado });
+  const el = document.getElementById('avisoProva');
+  el.className = 'aviso ' + (aprovado ? 'ok' : 'erro');
+  el.textContent = aprovado
+    ? `Aprovado, axé! Sua nota: ${nota}%.`
+    : `Nota: ${nota}%. Mínimo: ${provaAberta.nota_minima}%. Estude mais um pouco e tente novamente.`;
+  document.getElementById('btnEntregarProva').style.display = 'none';
+  carregarCursos();
+}
+
+/* ==================== BIBLIOTECA ==================== */
+async function carregarBiblioteca() {
+  const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
+  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+    <div class="cartao">
+      <h3>${escapeHtml(l.titulo)}</h3>
+      <p class="mudo">${escapeHtml(l.autor || '')}</p>
+      <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
+      ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Ler PDF</a>` : ''}
+      ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
+    </div>`).join('') || '<p class="vazio">A biblioteca ainda está vazia.</p>';
+}
+
+/* ==================== GIRAS ==================== */
+async function carregarGiras() {
+  const { data: giras } = await db.from('giras').select('*').order('data', { ascending: false });
+  const { data: minhas } = await db.from('anotacoes_gira').select('*').eq('aluno_id', eu.id);
+  const mapa = {}; (minhas || []).forEach(a => mapa[a.gira_id] = a);
+
+  document.getElementById('listaGiras').innerHTML = (giras || []).map(g => {
+    const nota = mapa[g.id];
+    return `
+    <div class="cartao">
+      <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
+      <label>Minhas anotações pós-gira</label>
+      <textarea id="nota_${g.id}">${escapeHtml(nota ? nota.texto : '')}</textarea>
+      <button class="btn btn-mini" onclick="salvarAnotacao('${g.id}', ${nota ? `'${nota.id}'` : 'null'})">Guardar anotação</button>
+      <span class="mudo" id="ok_${g.id}" style="font-size:.8rem"></span>
+    </div>`;
+  }).join('') || '<p class="vazio">Nenhuma gira registrada ainda.</p>';
+}
+async function salvarAnotacao(giraId, anotacaoId) {
+  const texto = document.getElementById('nota_' + giraId).value.trim();
+  if (!texto) return;
+  if (anotacaoId) await db.from('anotacoes_gira').update({ texto }).eq('id', anotacaoId);
+  else await db.from('anotacoes_gira').insert({ gira_id: giraId, aluno_id: eu.id, texto });
+  document.getElementById('ok_' + giraId).textContent = ' ✔ guardado';
+  setTimeout(() => carregarGiras(), 800);
+}
+</script>
+</body>
+</html>
