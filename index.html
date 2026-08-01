@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa de Estudo — Entrada</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  body { display: grid; place-items: center; padding: 20px; }
+  .portal { width: 100%; max-width: 420px; text-align: center; animation: surge .6s ease; }
+  .vela {
+    width: 74px; height: 74px; margin: 0 auto 20px; border: 1px solid var(--ouro);
+    border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; color: var(--ouro-claro);
+    box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18);
+    animation: chama 4s ease-in-out infinite;
+  }
+  @keyframes chama {
+    0%, 100% { box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18); }
+    50% { box-shadow: 0 0 42px rgba(201,162,39,.42), 0 0 80px rgba(201,162,39,.18), inset 0 0 26px rgba(201,162,39,.24); }
+  }
+  .portal h1 { font-size: 2.3rem; margin-bottom: 4px; }
+  .portal .sub { color: var(--ouro); letter-spacing: .3em; text-transform: uppercase; font-size: .7rem; margin-bottom: 26px; }
+  .portal .cartao { text-align: left; }
+  .troca { margin-top: 18px; font-size: .88rem; color: var(--oxala-2); }
+  .troca a { cursor: pointer; }
+</style>
+</head>
+<body>
+  <main class="portal">
+    <div class="vela">🕯</div>
+    <h1>Casa de Estudo</h1>
+    <p class="sub">Escola de Formação Mediúnica</p>
+
+    <!-- LOGIN -->
+    <div class="cartao" id="cxLogin">
+      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" type="email" autocomplete="email">
+      <label for="loginSenha">Senha</label>
+      <input id="loginSenha" type="password" autocomplete="current-password">
+      <button class="btn" style="width:100%" onclick="entrar()">Entrar na casa</button>
+      <div class="aviso" id="avisoLogin"></div>
+      <p class="troca">Ainda não faz parte? <a onclick="mostrar('cadastro')">Solicitar acesso</a></p>
+    </div>
+
+    <!-- CADASTRO -->
+    <div class="cartao" id="cxCadastro" style="display:none">
+      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+      <label for="cadNome">Nome completo</label>
+      <input id="cadNome" type="text" autocomplete="name">
+      <label for="cadEmail">E-mail</label>
+      <input id="cadEmail" type="email" autocomplete="email">
+      <label for="cadSenha">Senha (mínimo 6 caracteres)</label>
+      <input id="cadSenha" type="password" autocomplete="new-password">
+      <button class="btn" style="width:100%" onclick="cadastrar()">Solicitar acesso</button>
+      <div class="aviso" id="avisoCad"></div>
+      <p class="troca">Já tem acesso? <a onclick="mostrar('login')">Entrar</a></p>
+    </div>
+  </main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+function mostrar(qual) {
+  document.getElementById('cxLogin').style.display = qual === 'login' ? 'block' : 'none';
+  document.getElementById('cxCadastro').style.display = qual === 'cadastro' ? 'block' : 'none';
+}
+function aviso(id, tipo, msg) {
+  const el = document.getElementById(id);
+  el.className = 'aviso ' + tipo; el.textContent = msg;
+}
+
+async function entrar() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const senha = document.getElementById('loginSenha').value;
+  if (!email || !senha) return aviso('avisoLogin', 'erro', 'Preencha e-mail e senha.');
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+  if (error) return aviso('avisoLogin', 'erro', 'E-mail ou senha incorretos.');
+
+  const { data: perfil } = await db.from('profiles').select('*').eq('id', data.user.id).single();
+  if (!perfil) return aviso('avisoLogin', 'erro', 'Perfil não encontrado.');
+
+  if (perfil.role === 'admin') { window.location.href = 'admin.html'; return; }
+  if (!perfil.ativo) {
+    await db.auth.signOut();
+    return aviso('avisoLogin', 'erro', 'Seu acesso ainda não foi liberado pela direção da casa. Aguarde a aprovação.');
+  }
+  window.location.href = 'aluno.html';
+}
+
+async function cadastrar() {
+  const nome = document.getElementById('cadNome').value.trim();
+  const email = document.getElementById('cadEmail').value.trim();
+  const senha = document.getElementById('cadSenha').value;
+  if (!nome || !email || senha.length < 6) return aviso('avisoCad', 'erro', 'Preencha tudo. Senha com no mínimo 6 caracteres.');
+
+  const { error } = await db.auth.signUp({ email, password: senha, options: { data: { nome } } });
+  if (error) return aviso('avisoCad', 'erro', 'Não foi possível cadastrar: ' + error.message);
+  aviso('avisoCad', 'ok', 'Solicitação enviada, axé! Assim que a direção liberar seu acesso, você poderá entrar.');
+}
+
+// Enter envia
+document.getElementById('loginSenha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+</script>
+</body>
+</html>
