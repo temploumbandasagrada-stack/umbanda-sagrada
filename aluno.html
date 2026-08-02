@@ -154,6 +154,10 @@ tr:hover td { color: var(--oxala); }
 
 video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--linha); border-radius: 10px; background: #000; }
 
+.livro-palco { position: relative; }
+.livro-pagina { animation: surge .3s ease; }
+.livro-capa { width: 100%; max-height: 300px; object-fit: contain; border-radius: 10px; border: 1px solid var(--linha); background: #000; }
+
 @media (max-width: 640px) {
   .topo { padding: 14px 16px; }
   .abas, .conteudo { padding-left: 16px; padding-right: 16px; }
@@ -479,14 +483,30 @@ async function carregarBiblioteca() {
     const p = mapaProg[l.id];
     const pct = (p && p.total_paginas > 1) ? Math.round((p.pagina / p.total_paginas) * 100) : 0;
     const temPdf = !!l.arquivo_url;
+    const uid = 'liv_' + l.id.replace(/[^a-zA-Z0-9]/g, '');
+    const temCapa = !!l.capa_url;
     return `
-    <div class="cartao">
-      ${l.capa_url ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--linha); margin-bottom:12px">` : ''}
-      <h3>${escapeHtml(l.titulo)}</h3>
-      <p class="mudo">${escapeHtml(l.autor || '')}</p>
-      <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
+    <div class="cartao livro-cartao">
+      <div class="livro-palco">
+        <div class="livro-pagina" id="${uid}_p1" style="display:${temCapa ? 'block' : 'none'}">
+          ${temCapa ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" class="livro-capa">` : ''}
+          <h3 style="margin-top:10px">${escapeHtml(l.titulo)}</h3>
+          <p class="mudo">${escapeHtml(l.autor || '')}</p>
+        </div>
+        <div class="livro-pagina" id="${uid}_p2" style="display:${temCapa ? 'none' : 'block'}">
+          <h3>${escapeHtml(l.titulo)}</h3>
+          <p class="mudo">${escapeHtml(l.autor || '')}</p>
+          <p style="font-size:.9rem; margin-top:6px; white-space:pre-wrap">${escapeHtml(l.descricao || '')}</p>
+        </div>
+      </div>
+      ${temCapa ? `
+      <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin:8px 0">
+        <button class="btn btn-mini btn-fantasma" style="margin:0" onclick="virarLivro('${uid}',1)">‹</button>
+        <span class="mudo" id="${uid}_ind" style="font-size:.78rem">Capa</span>
+        <button class="btn btn-mini btn-fantasma" style="margin:0" onclick="virarLivro('${uid}',2)">›</button>
+      </div>` : ''}
       ${temPdf ? `
-        <div style="margin:10px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+        <div style="margin:6px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
           <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
         </div>
         <p class="mudo" style="font-size:.78rem">${p ? `${pct}% lido — parou na página ${p.pagina}` : 'Ainda não iniciado'}</p>
@@ -495,6 +515,13 @@ async function carregarBiblioteca() {
       ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
     </div>`;
   }).join('') || '<p class="vazio">A biblioteca ainda está vazia.</p>';
+}
+
+function virarLivro(uid, pag) {
+  document.getElementById(uid + '_p1').style.display = pag === 1 ? 'block' : 'none';
+  document.getElementById(uid + '_p2').style.display = pag === 2 ? 'block' : 'none';
+  const ind = document.getElementById(uid + '_ind');
+  if (ind) ind.textContent = pag === 1 ? 'Capa' : 'Sobre o livro';
 }
 
 /* ==================== LEITOR DE LIVRO ==================== */
