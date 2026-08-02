@@ -28,6 +28,23 @@
   --raio: 14px;
 }
 
+/* Tema claro (pergaminho) */
+body.claro {
+  --noite: #EFE7D4;
+  --noite-2: #E7DCC3;
+  --altar: #F6EFDF;
+  --altar-2: #EFE6D0;
+  --ouro: #9A7B1B;
+  --ouro-claro: #7A5E12;
+  --oxala: #3A3222;
+  --oxala-2: #6B6350;
+  --agua: #4A6E90;
+  --erva: #4E7A5E;
+  --perigo: #A94E4E;
+  --linha: rgba(154, 123, 27, .30);
+  --sombra: 0 14px 40px rgba(120, 100, 50, .18);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -176,7 +193,10 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <small>Painel da Direção</small>
     </div>
   </div>
-  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+  <div style="display:flex; gap:8px">
+    <button class="btn btn-fantasma btn-mini" onclick="alternarTema()" id="btnTema" title="Alternar tema">🌙</button>
+    <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+  </div>
 </header>
 
 <nav class="abas">
@@ -195,7 +215,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <div class="firmeza"><span class="estrela">✦</span></div>
     <div class="cartao" style="overflow-x:auto">
       <table>
-        <thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th>Situação</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Situação</th><th>Ações</th></tr></thead>
         <tbody id="tbUsuarios"></tbody>
       </table>
       <p class="vazio" id="vazioUsuarios" style="display:none">Nenhum usuário ainda.</p>
@@ -264,16 +284,21 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 <div class="veu" id="veuCurso">
   <div class="modal">
     <h3 id="tituloModalCurso">Novo curso</h3>
+    <input type="hidden" id="cursoEditId" value="">
     <label>Título</label><input id="cursoTitulo">
     <label>Descrição</label><textarea id="cursoDesc"></textarea>
-    <label>Nível de ensino</label>
-    <select id="cursoNivel">
-      <option value="1">Nível 1 — Iniciante</option>
-      <option value="2">Nível 2 — Desenvolvimento</option>
-      <option value="3">Nível 3 — Avançado</option>
+    <label>Categoria</label>
+    <select id="cursoCategoria">
+      <option value="basico">Básico</option>
+      <option value="medio">Médio</option>
+      <option value="avancado">Avançado</option>
+      <option value="outros">Outros cursos</option>
     </select>
+    <label>Capa do curso (imagem quadrada, opcional)</label>
+    <input type="file" id="cursoCapa" accept="image/*">
     <button class="btn" onclick="salvarCurso()">Salvar</button>
     <button class="btn btn-fantasma" onclick="fechar('veuCurso')">Cancelar</button>
+    <div class="aviso" id="avisoCurso"></div>
   </div>
 </div>
 
@@ -302,6 +327,16 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <div class="modal" style="max-width:640px">
     <div id="relatoCorpo"></div>
     <button class="btn btn-fantasma" onclick="fechar('veuRelato')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL LIBERAR CURSOS POR ALUNO -->
+<div class="veu" id="veuAcCursos">
+  <div class="modal" style="max-width:520px">
+    <h3 id="acCursosNome">Cursos liberados</h3>
+    <p class="mudo" style="font-size:.84rem">Marque os cursos que este aluno pode acessar. As mudanças são salvas na hora.</p>
+    <div id="acCursosLista" style="margin-top:12px"></div>
+    <button class="btn btn-fantasma" onclick="fechar('veuAcCursos')">Fechar</button>
   </div>
 </div>
 
@@ -340,6 +375,20 @@ function youtubeEmbed(url) {
 function escapeHtml(t) {
   return (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+// Tema claro/escuro
+function aplicarTema() {
+  const claro = localStorage.getItem('tema') === 'claro';
+  document.body.classList.toggle('claro', claro);
+  const b = document.getElementById('btnTema');
+  if (b) b.textContent = claro ? '☀️' : '🌙';
+}
+function alternarTema() {
+  const claro = !(localStorage.getItem('tema') === 'claro');
+  localStorage.setItem('tema', claro ? 'claro' : 'escuro');
+  aplicarTema();
+}
+aplicarTema();
 
 </script>
 <script>
@@ -381,14 +430,10 @@ async function carregarUsuarios() {
     tb.innerHTML += `<tr>
       <td>${escapeHtml(u.nome)} ${u.role === 'admin' ? '<span class="selo azul">direção</span>' : ''}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td>
-        <select onchange="mudarNivel('${u.id}', this.value)" style="width:auto;padding:5px 8px">
-          ${[1,2,3].map(n => `<option value="${n}" ${u.nivel === n ? 'selected' : ''}>Nível ${n}</option>`).join('')}
-        </select>
-      </td>
       <td>${u.ativo ? '<span class="selo verde">liberado</span>' : '<span class="selo vermelho">aguardando</span>'}</td>
       <td>
         <button class="btn btn-mini ${u.ativo ? 'btn-perigo' : ''}" onclick="alternarAcesso('${u.id}', ${u.ativo})">${u.ativo ? 'Bloquear' : 'Liberar'}</button>
+        ${u.role !== 'admin' ? `<button class="btn btn-mini" onclick="gerenciarCursos('${u.id}', '${escapeHtml(u.nome).replace(/'/g,"")}')">Cursos</button>` : ''}
       </td>
     </tr>`;
   });
@@ -397,27 +442,69 @@ async function alternarAcesso(id, ativo) {
   await db.from('profiles').update({ ativo: !ativo }).eq('id', id);
   carregarUsuarios();
 }
-async function mudarNivel(id, nivel) {
-  await db.from('profiles').update({ nivel: parseInt(nivel) }).eq('id', id);
+
+// Libera cursos individualmente para um aluno
+let alunoCursosId = null;
+async function gerenciarCursos(alunoId, nome) {
+  alunoCursosId = alunoId;
+  document.getElementById('acCursosNome').textContent = 'Cursos liberados para ' + nome;
+  const { data: cursos } = await db.from('cursos').select('id, titulo, categoria').order('categoria');
+  const { data: acessos } = await db.from('acessos_curso').select('curso_id').eq('aluno_id', alunoId);
+  const liberados = new Set((acessos || []).map(a => a.curso_id));
+  document.getElementById('acCursosLista').innerHTML = (cursos || []).map(c => `
+    <label style="display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; color:var(--oxala); margin:8px 0; cursor:pointer">
+      <input type="checkbox" class="acChk" value="${c.id}" style="width:auto" ${liberados.has(c.id) ? 'checked' : ''}
+        onchange="alternarCursoAluno('${c.id}', this.checked)">
+      ${escapeHtml(c.titulo)} <span class="selo" style="font-size:.62rem">${CATEGORIAS[c.categoria] || 'Básico'}</span>
+    </label>`).join('') || '<p class="mudo">Nenhum curso criado ainda.</p>';
+  document.getElementById('veuAcCursos').classList.add('aberto');
+}
+async function alternarCursoAluno(cursoId, liberar) {
+  if (liberar) {
+    await db.from('acessos_curso').upsert({ aluno_id: alunoCursosId, curso_id: cursoId }, { onConflict: 'aluno_id,curso_id' });
+  } else {
+    await db.from('acessos_curso').delete().eq('aluno_id', alunoCursosId).eq('curso_id', cursoId);
+  }
 }
 
 /* ==================== CURSOS ==================== */
+let cursosCache = [];
+const CATEGORIAS = { basico: 'Básico', medio: 'Médio', avancado: 'Avançado', outros: 'Outros cursos' };
+
 function abrirModalCurso() {
-  cursoEditando = null;
+  document.getElementById('cursoEditId').value = '';
   document.getElementById('tituloModalCurso').textContent = 'Novo curso';
   ['cursoTitulo','cursoDesc'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('cursoCategoria').value = 'basico';
+  document.getElementById('cursoCapa').value = '';
+  document.getElementById('veuCurso').classList.add('aberto');
+}
+function editarCurso(id) {
+  const c = cursosCache.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cursoEditId').value = c.id;
+  document.getElementById('tituloModalCurso').textContent = 'Editar curso';
+  document.getElementById('cursoTitulo').value = c.titulo || '';
+  document.getElementById('cursoDesc').value = c.descricao || '';
+  document.getElementById('cursoCategoria').value = c.categoria || 'basico';
+  document.getElementById('cursoCapa').value = '';
   document.getElementById('veuCurso').classList.add('aberto');
 }
 async function salvarCurso() {
+  const editId = document.getElementById('cursoEditId').value;
   const dados = {
     titulo: document.getElementById('cursoTitulo').value.trim(),
     descricao: document.getElementById('cursoDesc').value.trim(),
-    nivel: parseInt(document.getElementById('cursoNivel').value)
+    categoria: document.getElementById('cursoCategoria').value
   };
-  if (!dados.titulo) return;
-  if (cursoEditando) await db.from('cursos').update(dados).eq('id', cursoEditando);
-  else await db.from('cursos').insert(dados);
-  fechar('veuCurso'); carregarCursos(); carregarModulosSelect();
+  if (!dados.titulo) return aviso('avisoCurso', 'erro', 'Informe o título.');
+  try {
+    const capa = document.getElementById('cursoCapa').files[0];
+    if (capa) { aviso('avisoCurso', 'ok', 'Enviando capa...'); dados.capa_url = await uploadPdf(capa, 'capas-curso'); }
+    if (editId) await db.from('cursos').update(dados).eq('id', editId);
+    else await db.from('cursos').insert(dados);
+    fechar('veuCurso'); carregarCursos(); carregarModulosSelect();
+  } catch (e) { aviso('avisoCurso', 'erro', 'Erro: ' + e.message); }
 }
 async function apagarCurso(id) {
   if (!confirm('Apagar este curso e tudo dentro dele?')) return;
@@ -471,13 +558,20 @@ async function apagarAula(id) {
   carregarCursos();
 }
 async function carregarCursos() {
-  const { data: cursos } = await db.from('cursos').select('*, modulos(*, aulas(*))').order('nivel');
+  const { data: cursos } = await db.from('cursos').select('*, modulos(*, aulas(*))').order('categoria');
+  cursosCache = cursos || [];
   const el = document.getElementById('listaCursos');
-  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso criado ainda. Comece pelo botão acima.</p>'; return; }
-  el.innerHTML = cursos.map(c => `
+  if (!cursosCache.length) { el.innerHTML = '<p class="vazio">Nenhum curso criado ainda. Comece pelo botão acima.</p>'; return; }
+  el.innerHTML = cursosCache.map(c => `
     <div class="cartao">
-      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
-      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+      <div style="display:flex; gap:14px; align-items:flex-start">
+        ${c.capa_url ? `<img src="${c.capa_url}" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:1px solid var(--linha)">` : ''}
+        <div style="flex:1">
+          <h3>${escapeHtml(c.titulo)} <span class="selo">${CATEGORIAS[c.categoria] || 'Básico'}</span></h3>
+          <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+        </div>
+      </div>
+      <button class="btn btn-mini" onclick="editarCurso('${c.id}')">Editar</button>
       <button class="btn btn-mini" onclick="novoModulo('${c.id}')">+ Módulo</button>
       <button class="btn btn-mini btn-perigo" onclick="apagarCurso('${c.id}')">Apagar curso</button>
       ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
