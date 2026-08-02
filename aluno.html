@@ -226,7 +226,35 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   </div>
 </div>
 
+<!-- MODAL LEITOR DE LIVRO -->
+<div class="veu" id="veuLeitor">
+  <div class="modal" style="max-width:900px; padding:18px">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+      <h3 id="leitorTitulo" style="margin:0"></h3>
+      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="fecharLeitor()">Fechar</button>
+    </div>
+    <div style="margin:10px 0 6px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+      <div id="leitorBarra" style="height:100%; width:0%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px; transition:width .3s"></div>
+    </div>
+    <p class="mudo" id="leitorStatus" style="font-size:.82rem; margin-bottom:10px"></p>
+    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:10px; flex-wrap:wrap">
+      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹ Anterior</button>
+      <span class="mudo" id="leitorPagina" style="font-size:.9rem"></span>
+      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">Próxima ›</button>
+    </div>
+    <div style="max-height:62vh; overflow:auto; text-align:center; background:#000; border:1px solid var(--linha); border-radius:10px; padding:8px">
+      <canvas id="leitorCanvas" style="max-width:100%; height:auto"></canvas>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if (window['pdfjsLib']) {
+  window['pdfjsLib'].GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+</script>
 <script>
 // ============================================
 // CONFIGURAÇÃO DO SUPABASE
@@ -403,14 +431,90 @@ async function entregarProva() {
 /* ==================== BIBLIOTECA ==================== */
 async function carregarBiblioteca() {
   const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
-  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+  const { data: prog } = await db.from('progresso_leitura').select('*').eq('aluno_id', eu.id);
+  const mapaProg = {}; (prog || []).forEach(p => mapaProg[p.livro_id] = p);
+
+  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => {
+    const p = mapaProg[l.id];
+    const pct = (p && p.total_paginas > 1) ? Math.round((p.pagina / p.total_paginas) * 100) : 0;
+    const temPdf = !!l.arquivo_url;
+    return `
     <div class="cartao">
+      ${l.capa_url ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--linha); margin-bottom:12px">` : ''}
       <h3>${escapeHtml(l.titulo)}</h3>
       <p class="mudo">${escapeHtml(l.autor || '')}</p>
       <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
-      ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Ler PDF</a>` : ''}
+      ${temPdf ? `
+        <div style="margin:10px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
+        </div>
+        <p class="mudo" style="font-size:.78rem">${p ? `${pct}% lido — parou na página ${p.pagina}` : 'Ainda não iniciado'}</p>
+        <button class="btn btn-mini" onclick='abrirLeitor(${JSON.stringify({id:l.id, titulo:l.titulo, arquivo_url:l.arquivo_url}).replace(/'/g,"&#39;")})'>${p ? 'Continuar lendo' : 'Ler'}</button>
+      ` : ''}
       ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
-    </div>`).join('') || '<p class="vazio">A biblioteca ainda está vazia.</p>';
+    </div>`;
+  }).join('') || '<p class="vazio">A biblioteca ainda está vazia.</p>';
+}
+
+/* ==================== LEITOR DE LIVRO ==================== */
+let pdfAtual = null, livroAtual = null, paginaAtual = 1, totalPaginas = 1, renderizando = false;
+
+async function abrirLeitor(livro) {
+  livroAtual = livro;
+  document.getElementById('leitorTitulo').textContent = livro.titulo;
+  document.getElementById('leitorStatus').textContent = 'Carregando livro...';
+  document.getElementById('veuLeitor').classList.add('aberto');
+  try {
+    pdfAtual = await pdfjsLib.getDocument(livro.arquivo_url).promise;
+    totalPaginas = pdfAtual.numPages;
+    // pega onde parou
+    const { data: p } = await db.from('progresso_leitura').select('*').eq('aluno_id', eu.id).eq('livro_id', livro.id).maybeSingle();
+    paginaAtual = (p && p.pagina >= 1 && p.pagina <= totalPaginas) ? p.pagina : 1;
+    await renderizarPagina();
+  } catch (e) {
+    document.getElementById('leitorStatus').textContent = 'Não foi possível abrir este livro.';
+  }
+}
+
+async function renderizarPagina() {
+  if (!pdfAtual || renderizando) return;
+  renderizando = true;
+  const page = await pdfAtual.getPage(paginaAtual);
+  const canvas = document.getElementById('leitorCanvas');
+  const ctx = canvas.getContext('2d');
+  const viewport = page.getViewport({ scale: 1.5 });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  renderizando = false;
+
+  const pct = totalPaginas > 1 ? Math.round((paginaAtual / totalPaginas) * 100) : 100;
+  document.getElementById('leitorBarra').style.width = pct + '%';
+  document.getElementById('leitorPagina').textContent = `Página ${paginaAtual} de ${totalPaginas}`;
+  document.getElementById('leitorStatus').textContent = `${pct}% concluído`;
+  salvarProgressoLeitura();
+}
+
+async function proximaPagina() {
+  if (paginaAtual < totalPaginas) { paginaAtual++; await renderizarPagina(); }
+}
+async function paginaAnterior() {
+  if (paginaAtual > 1) { paginaAtual--; await renderizarPagina(); }
+}
+
+async function salvarProgressoLeitura() {
+  if (!livroAtual) return;
+  await db.from('progresso_leitura').upsert({
+    aluno_id: eu.id, livro_id: livroAtual.id,
+    pagina: paginaAtual, total_paginas: totalPaginas, atualizado_em: new Date().toISOString()
+  }, { onConflict: 'aluno_id,livro_id' });
+}
+
+function fecharLeitor() {
+  salvarProgressoLeitura();
+  document.getElementById('veuLeitor').classList.remove('aberto');
+  pdfAtual = null; livroAtual = null;
+  carregarBiblioteca(); // atualiza a barra no cartão
 }
 
 /* ==================== GIRAS ==================== */
