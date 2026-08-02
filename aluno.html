@@ -175,6 +175,43 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 .livro-pagina { animation: surge .3s ease; }
 .livro-capa { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; border: 1px solid var(--linha); background: #000; display: block; }
 
+/* Leitor em tela cheia */
+.leitor-cheio {
+  position: fixed; inset: 0; z-index: 200; background: var(--noite);
+  display: none; flex-direction: column;
+}
+.leitor-cheio.aberto { display: flex; }
+.leitor-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px 6px; }
+.leitor-topo h3 { margin: 0; font-size: 1.1rem; }
+.leitor-topo .mudo { font-size: .8rem; white-space: nowrap; }
+.leitor-barra { height: 5px; background: var(--noite-2); margin: 0 18px; border-radius: 99px; overflow: hidden; }
+.leitor-barra > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ouro), var(--ouro-claro)); transition: width .3s; }
+.leitor-area { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; -webkit-overflow-scrolling: touch; }
+.leitor-area canvas { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.4); background: #fff; }
+.leitor-nav { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 18px calc(14px + env(safe-area-inset-bottom)); }
+
+/* Bolinha flutuante + */
+.fab {
+  position: fixed; right: 20px; bottom: calc(72px + env(safe-area-inset-bottom));
+  width: 56px; height: 56px; border-radius: 50%; border: none;
+  background: linear-gradient(160deg, var(--ouro), #A8861D); color: #1a1408;
+  font-size: 1.8rem; line-height: 1; cursor: pointer; z-index: 210;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); transition: transform .25s;
+}
+.fab.girado { transform: rotate(45deg); }
+.fab-menu {
+  position: fixed; right: 20px; bottom: calc(138px + env(safe-area-inset-bottom));
+  display: none; flex-direction: column; gap: 8px; z-index: 210;
+}
+.fab-menu.aberto { display: flex; animation: surge .2s ease; }
+.fab-item {
+  background: linear-gradient(160deg, var(--altar), var(--noite-2));
+  border: 1px solid var(--linha); color: var(--oxala);
+  border-radius: 999px; padding: 10px 18px; font-family: 'Jost'; font-size: .9rem;
+  cursor: pointer; white-space: nowrap; box-shadow: var(--sombra); text-align: right;
+}
+.fab-item:hover { border-color: var(--ouro); color: var(--ouro-claro); }
+
 /* Faixas de cursos (Netflix) */
 .faixa { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x mandatory; }
 .faixa::-webkit-scrollbar { height: 6px; }
@@ -284,28 +321,32 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   </div>
 </div>
 
-<!-- MODAL LEITOR DE LIVRO -->
-<div class="veu" id="veuLeitor">
-  <div class="modal modal-leitor" style="max-width:960px; padding:14px; width:96vw">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
-      <h3 id="leitorTitulo" style="margin:0; font-size:1.15rem"></h3>
-      <div style="display:flex; gap:8px">
-        <button class="btn btn-mini" style="margin:0" onclick="abrirMenuNota()">+ Anotar</button>
-        <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="fecharLeitor()">Fechar</button>
-      </div>
-    </div>
-    <div style="margin:8px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
-      <div id="leitorBarra" style="height:100%; width:0%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px; transition:width .3s"></div>
-    </div>
-    <p class="mudo" id="leitorStatus" style="font-size:.8rem; margin-bottom:8px"></p>
-    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:8px; flex-wrap:wrap">
-      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹</button>
-      <span class="mudo" id="leitorPagina" style="font-size:.88rem"></span>
-      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">›</button>
-    </div>
-    <div style="max-height:74vh; overflow:auto; text-align:center; background:#fff; border:1px solid var(--linha); border-radius:10px; padding:4px">
-      <canvas id="leitorCanvas" style="max-width:100%; height:auto"></canvas>
-    </div>
+<!-- MODAL LEITOR DE LIVRO (TELA CHEIA) -->
+<div id="veuLeitor" class="leitor-cheio">
+  <div class="leitor-topo">
+    <h3 id="leitorTitulo"></h3>
+    <span class="mudo" id="leitorStatus"></span>
+  </div>
+  <div class="leitor-barra"><div id="leitorBarra"></div></div>
+
+  <div class="leitor-area" id="leitorArea">
+    <canvas id="leitorCanvas"></canvas>
+  </div>
+
+  <div class="leitor-nav">
+    <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹ Anterior</button>
+    <span class="mudo" id="leitorPagina"></span>
+    <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">Próxima ›</button>
+  </div>
+
+  <!-- Bolinha flutuante + -->
+  <button class="fab" id="fab" onclick="toggleFab()">+</button>
+  <div class="fab-menu" id="fabMenu">
+    <button class="fab-item" onclick="notaRapida('anotacao')">✎ Anotação</button>
+    <button class="fab-item" onclick="notaRapida('duvida')">? Dúvida</button>
+    <button class="fab-item" onclick="mudarZoom(1)">A+ Aumentar</button>
+    <button class="fab-item" onclick="mudarZoom(-1)">A− Diminuir</button>
+    <button class="fab-item" onclick="fecharLeitor()">✕ Sair</button>
   </div>
 </div>
 
@@ -657,17 +698,19 @@ function virarLivro(uid, pag) {
 }
 
 /* ==================== LEITOR DE LIVRO ==================== */
-let pdfAtual = null, livroAtual = null, paginaAtual = 1, totalPaginas = 1, renderizando = false;
+let pdfAtual = null, livroAtual = null, paginaAtual = 1, totalPaginas = 1, renderizando = false, zoomLeitor = 1;
 
 async function abrirLeitor(livro) {
   livroAtual = livro;
+  zoomLeitor = 1;
   document.getElementById('leitorTitulo').textContent = livro.titulo;
   document.getElementById('leitorStatus').textContent = 'Carregando livro...';
   document.getElementById('veuLeitor').classList.add('aberto');
+  document.getElementById('fabMenu').classList.remove('aberto');
+  document.getElementById('fab').classList.remove('girado');
   try {
     pdfAtual = await pdfjsLib.getDocument(livro.arquivo_url).promise;
     totalPaginas = pdfAtual.numPages;
-    // pega onde parou
     const { data: p } = await db.from('progresso_leitura').select('*').eq('aluno_id', eu.id).eq('livro_id', livro.id).maybeSingle();
     paginaAtual = (p && p.pagina >= 1 && p.pagina <= totalPaginas) ? p.pagina : 1;
     await renderizarPagina();
@@ -682,10 +725,10 @@ async function renderizarPagina() {
   const page = await pdfAtual.getPage(paginaAtual);
   const canvas = document.getElementById('leitorCanvas');
   const ctx = canvas.getContext('2d');
-  // ajusta a escala para preencher a largura disponível (bom no celular)
   const base = page.getViewport({ scale: 1 });
-  const larguraAlvo = Math.min(canvas.parentElement.clientWidth - 12, 1000);
-  const escala = Math.max(larguraAlvo / base.width, 1);
+  const area = document.getElementById('leitorArea');
+  const larguraAlvo = Math.min(area.clientWidth - 24, 1400);
+  const escala = Math.max((larguraAlvo / base.width) * zoomLeitor, 0.5);
   const viewport = page.getViewport({ scale: escala });
   canvas.width = viewport.width;
   canvas.height = viewport.height;
@@ -699,11 +742,26 @@ async function renderizarPagina() {
   salvarProgressoLeitura();
 }
 
+async function mudarZoom(dir) {
+  zoomLeitor = Math.min(3, Math.max(0.8, zoomLeitor + dir * 0.2));
+  await renderizarPagina();
+}
+
+// Bolinha flutuante +
+function toggleFab() {
+  document.getElementById('fabMenu').classList.toggle('aberto');
+  document.getElementById('fab').classList.toggle('girado');
+}
+function fecharFab() {
+  document.getElementById('fabMenu').classList.remove('aberto');
+  document.getElementById('fab').classList.remove('girado');
+}
+
 async function proximaPagina() {
-  if (paginaAtual < totalPaginas) { paginaAtual++; await renderizarPagina(); }
+  if (paginaAtual < totalPaginas) { paginaAtual++; document.getElementById('leitorArea').scrollTop = 0; await renderizarPagina(); }
 }
 async function paginaAnterior() {
-  if (paginaAtual > 1) { paginaAtual--; await renderizarPagina(); }
+  if (paginaAtual > 1) { paginaAtual--; document.getElementById('leitorArea').scrollTop = 0; await renderizarPagina(); }
 }
 
 async function salvarProgressoLeitura() {
@@ -716,21 +774,23 @@ async function salvarProgressoLeitura() {
 
 function fecharLeitor() {
   salvarProgressoLeitura();
+  fecharFab();
   document.getElementById('veuLeitor').classList.remove('aberto');
   pdfAtual = null; livroAtual = null;
-  carregarBiblioteca(); // atualiza a barra no cartão
+  carregarBiblioteca();
 }
 
 /* ==================== NOTAS (dúvida / anotação) ==================== */
 let notaContexto = {}, notaTipoAtual = 'anotacao';
 
-function abrirMenuNota() {
-  // contexto: livro aberto no leitor
+// chamada pela bolinha + dentro do leitor
+function notaRapida(tipo) {
+  fecharFab();
   notaContexto = { origem: 'livro', ref_id: livroAtual.id, ref_titulo: livroAtual.titulo, pagina: paginaAtual };
-  document.getElementById('notaTitulo').textContent = 'Nova nota';
+  document.getElementById('notaTitulo').textContent = tipo === 'duvida' ? 'Nova dúvida' : 'Nova anotação';
   document.getElementById('notaContexto').textContent = `${livroAtual.titulo} — página ${paginaAtual}`;
   document.getElementById('notaTexto').value = '';
-  tipoNota('anotacao');
+  tipoNota(tipo);
   document.getElementById('veuNota').classList.add('aberto');
 }
 function tipoNota(t) {
