@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Casa de Estudo — Entrada</title>
+<title>Casa de Estudo — Direção</title>
 <style>
 /* ============================================================
    CASA DE ESTUDO — identidade visual
@@ -161,58 +161,133 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 </style>
-<style>
-  body { display: grid; place-items: center; padding: 20px; }
-  .portal { width: 100%; max-width: 420px; text-align: center; animation: surge .6s ease; }
-  .vela {
-    width: 74px; height: 74px; margin: 0 auto 20px; border: 1px solid var(--ouro);
-    border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; color: var(--ouro-claro);
-    box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18);
-    animation: chama 4s ease-in-out infinite;
-  }
-  @keyframes chama {
-    0%, 100% { box-shadow: 0 0 30px rgba(201,162,39,.30), 0 0 60px rgba(201,162,39,.12), inset 0 0 22px rgba(201,162,39,.18); }
-    50% { box-shadow: 0 0 42px rgba(201,162,39,.42), 0 0 80px rgba(201,162,39,.18), inset 0 0 26px rgba(201,162,39,.24); }
-  }
-  .portal h1 { font-size: 2.3rem; margin-bottom: 4px; }
-  .portal .sub { color: var(--ouro); letter-spacing: .3em; text-transform: uppercase; font-size: .7rem; margin-bottom: 26px; }
-  .portal .cartao { text-align: left; }
-  .troca { margin-top: 18px; font-size: .88rem; color: var(--oxala-2); }
-  .troca a { cursor: pointer; }
-</style>
 </head>
 <body>
-  <main class="portal">
-    <div class="vela">🕯</div>
-    <h1>Casa de Estudo</h1>
-    <p class="sub">Escola de Formação Mediúnica</p>
 
-    <!-- LOGIN -->
-    <div class="cartao" id="cxLogin">
-      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
-      <label for="loginEmail">E-mail</label>
-      <input id="loginEmail" type="email" autocomplete="email">
-      <label for="loginSenha">Senha</label>
-      <input id="loginSenha" type="password" autocomplete="current-password">
-      <button class="btn" style="width:100%" onclick="entrar()">Entrar na casa</button>
-      <div class="aviso" id="avisoLogin"></div>
-      <p class="troca">Ainda não faz parte? <a onclick="mostrar('cadastro')">Solicitar acesso</a></p>
+<header class="topo">
+  <div class="marca">
+    <div class="simbolo">✦</div>
+    <div>
+      <h1>Casa de Estudo</h1>
+      <small>Painel da Direção</small>
     </div>
+  </div>
+  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+</header>
 
-    <!-- CADASTRO -->
-    <div class="cartao" id="cxCadastro" style="display:none">
-      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
-      <label for="cadNome">Nome completo</label>
-      <input id="cadNome" type="text" autocomplete="name">
-      <label for="cadEmail">E-mail</label>
-      <input id="cadEmail" type="email" autocomplete="email">
-      <label for="cadSenha">Senha (mínimo 6 caracteres)</label>
-      <input id="cadSenha" type="password" autocomplete="new-password">
-      <button class="btn" style="width:100%" onclick="cadastrar()">Solicitar acesso</button>
-      <div class="aviso" id="avisoCad"></div>
-      <p class="troca">Já tem acesso? <a onclick="mostrar('login')">Entrar</a></p>
+<nav class="abas">
+  <button class="aba ativa" data-secao="usuarios" onclick="irPara('usuarios')">Usuários</button>
+  <button class="aba" data-secao="cursos" onclick="irPara('cursos')">Cursos</button>
+  <button class="aba" data-secao="provas" onclick="irPara('provas')">Provas</button>
+  <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+</nav>
+
+<main class="conteudo">
+
+  <!-- ==================== USUÁRIOS ==================== -->
+  <section class="secao ativa" id="sec-usuarios">
+    <h2>Usuários e acessos</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th>Situação</th><th>Ações</th></tr></thead>
+        <tbody id="tbUsuarios"></tbody>
+      </table>
+      <p class="vazio" id="vazioUsuarios" style="display:none">Nenhum usuário ainda.</p>
     </div>
-  </main>
+  </section>
+
+  <!-- ==================== CURSOS ==================== -->
+  <section class="secao" id="sec-cursos">
+    <h2>Cursos, módulos e aulas</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <button class="btn btn-mini" onclick="abrirModalCurso()">+ Novo curso</button>
+    <div id="listaCursos" style="margin-top:16px"></div>
+  </section>
+
+  <!-- ==================== PROVAS ==================== -->
+  <section class="secao" id="sec-provas">
+    <h2>Provas</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <label>Módulo</label>
+      <select id="selModuloProva" onchange="carregarProvasDoModulo()"></select>
+      <button class="btn btn-mini" onclick="criarProva()">+ Nova prova neste módulo</button>
+    </div>
+    <div id="listaProvas"></div>
+  </section>
+
+  <!-- ==================== BIBLIOTECA ==================== -->
+  <section class="secao" id="sec-biblioteca">
+    <h2>Biblioteca</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <h3>Indicar novo livro / material</h3>
+      <label>Título</label><input id="bibTitulo">
+      <label>Autor</label><input id="bibAutor">
+      <label>Descrição</label><textarea id="bibDesc"></textarea>
+      <label>Capa do livro (imagem, opcional)</label><input type="file" id="bibCapa" accept="image/*">
+      <label>Arquivo PDF (opcional)</label><input type="file" id="bibArquivo" accept=".pdf">
+      <label>Ou link externo (opcional)</label><input id="bibLink" placeholder="https://...">
+      <button class="btn" onclick="salvarLivro()">Adicionar à biblioteca</button>
+      <div class="aviso" id="avisoBib"></div>
+    </div>
+    <div class="grade" id="listaBiblioteca"></div>
+  </section>
+
+  <!-- ==================== GIRAS ==================== -->
+  <section class="secao" id="sec-giras">
+    <h2>Registro de giras</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <h3>Registrar gira</h3>
+      <label>Data</label><input type="date" id="giraData">
+      <label>Título</label><input id="giraTitulo" placeholder="Ex.: Gira de Pretos Velhos">
+      <label>O que aconteceu na gira</label><textarea id="giraDesc"></textarea>
+      <button class="btn" onclick="salvarGira()">Registrar</button>
+      <div class="aviso" id="avisoGira"></div>
+    </div>
+    <div id="listaGiras"></div>
+  </section>
+</main>
+
+<!-- MODAL CURSO -->
+<div class="veu" id="veuCurso">
+  <div class="modal">
+    <h3 id="tituloModalCurso">Novo curso</h3>
+    <label>Título</label><input id="cursoTitulo">
+    <label>Descrição</label><textarea id="cursoDesc"></textarea>
+    <label>Nível de ensino</label>
+    <select id="cursoNivel">
+      <option value="1">Nível 1 — Iniciante</option>
+      <option value="2">Nível 2 — Desenvolvimento</option>
+      <option value="3">Nível 3 — Avançado</option>
+    </select>
+    <button class="btn" onclick="salvarCurso()">Salvar</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuCurso')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL AULA -->
+<div class="veu" id="veuAula">
+  <div class="modal">
+    <h3>Nova aula</h3>
+    <label>Título</label><input id="aulaTitulo">
+    <label>Tipo</label>
+    <select id="aulaTipo" onchange="trocarTipoAula()">
+      <option value="video">Vídeo-aula (link do YouTube)</option>
+      <option value="pdf">Material em PDF</option>
+      <option value="texto">Texto / apostila escrita</option>
+    </select>
+    <div id="campoVideo"><label>Link do YouTube</label><input id="aulaVideo" placeholder="https://youtube.com/..."></div>
+    <div id="campoPdf" style="display:none"><label>Arquivo PDF</label><input type="file" id="aulaPdf" accept=".pdf"></div>
+    <div id="campoTexto" style="display:none"><label>Conteúdo</label><textarea id="aulaConteudo"></textarea></div>
+    <button class="btn" onclick="salvarAula()">Salvar aula</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuAula')">Cancelar</button>
+    <div class="aviso" id="avisoAula"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -252,47 +327,271 @@ function escapeHtml(t) {
 
 </script>
 <script>
-function mostrar(qual) {
-  document.getElementById('cxLogin').style.display = qual === 'login' ? 'block' : 'none';
-  document.getElementById('cxCadastro').style.display = qual === 'cadastro' ? 'block' : 'none';
-}
-function aviso(id, tipo, msg) {
-  const el = document.getElementById(id);
-  el.className = 'aviso ' + tipo; el.textContent = msg;
-}
+let eu = null;
+let cursoEditando = null;
+let moduloDaAula = null;
 
-async function entrar() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const senha = document.getElementById('loginSenha').value;
-  if (!email || !senha) return aviso('avisoLogin', 'erro', 'Preencha e-mail e senha.');
-
-  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
-  if (error) return aviso('avisoLogin', 'erro', 'E-mail ou senha incorretos.');
-
-  const { data: perfil } = await db.from('profiles').select('*').eq('id', data.user.id).single();
-  if (!perfil) return aviso('avisoLogin', 'erro', 'Perfil não encontrado.');
-
-  if (perfil.role === 'admin') { window.location.href = 'admin.html'; return; }
-  if (!perfil.ativo) {
-    await db.auth.signOut();
-    return aviso('avisoLogin', 'erro', 'Seu acesso ainda não foi liberado pela direção da casa. Aguarde a aprovação.');
-  }
-  window.location.href = 'aluno.html';
+init();
+async function init() {
+  eu = await exigirLogin();
+  if (!eu) return;
+  if (eu.role !== 'admin') { window.location.href = 'aluno.html'; return; }
+  carregarUsuarios(); carregarCursos(); carregarModulosSelect(); carregarBiblioteca(); carregarGiras();
 }
 
-async function cadastrar() {
-  const nome = document.getElementById('cadNome').value.trim();
-  const email = document.getElementById('cadEmail').value.trim();
-  const senha = document.getElementById('cadSenha').value;
-  if (!nome || !email || senha.length < 6) return aviso('avisoCad', 'erro', 'Preencha tudo. Senha com no mínimo 6 caracteres.');
+function irPara(secao) {
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.getElementById('sec-' + secao).classList.add('ativa');
+  document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+}
+function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
+function aviso(id, tipo, msg) { const el = document.getElementById(id); el.className = 'aviso ' + tipo; el.textContent = msg; setTimeout(() => el.className = 'aviso', 4000); }
 
-  const { error } = await db.auth.signUp({ email, password: senha, options: { data: { nome } } });
-  if (error) return aviso('avisoCad', 'erro', 'Não foi possível cadastrar: ' + error.message);
-  aviso('avisoCad', 'ok', 'Solicitação enviada, axé! Assim que a direção liberar seu acesso, você poderá entrar.');
+async function uploadPdf(file, pasta) {
+  const nome = pasta + '/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g, '_');
+  const { error } = await db.storage.from('materiais').upload(nome, file);
+  if (error) throw error;
+  return db.storage.from('materiais').getPublicUrl(nome).data.publicUrl;
 }
 
-// Enter envia
-document.getElementById('loginSenha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+/* ==================== USUÁRIOS ==================== */
+async function carregarUsuarios() {
+  const { data } = await db.from('profiles').select('*').order('created_at', { ascending: false });
+  const tb = document.getElementById('tbUsuarios');
+  tb.innerHTML = '';
+  document.getElementById('vazioUsuarios').style.display = (data || []).length ? 'none' : 'block';
+  (data || []).forEach(u => {
+    tb.innerHTML += `<tr>
+      <td>${escapeHtml(u.nome)} ${u.role === 'admin' ? '<span class="selo azul">direção</span>' : ''}</td>
+      <td>${escapeHtml(u.email)}</td>
+      <td>
+        <select onchange="mudarNivel('${u.id}', this.value)" style="width:auto;padding:5px 8px">
+          ${[1,2,3].map(n => `<option value="${n}" ${u.nivel === n ? 'selected' : ''}>Nível ${n}</option>`).join('')}
+        </select>
+      </td>
+      <td>${u.ativo ? '<span class="selo verde">liberado</span>' : '<span class="selo vermelho">aguardando</span>'}</td>
+      <td>
+        <button class="btn btn-mini ${u.ativo ? 'btn-perigo' : ''}" onclick="alternarAcesso('${u.id}', ${u.ativo})">${u.ativo ? 'Bloquear' : 'Liberar'}</button>
+      </td>
+    </tr>`;
+  });
+}
+async function alternarAcesso(id, ativo) {
+  await db.from('profiles').update({ ativo: !ativo }).eq('id', id);
+  carregarUsuarios();
+}
+async function mudarNivel(id, nivel) {
+  await db.from('profiles').update({ nivel: parseInt(nivel) }).eq('id', id);
+}
+
+/* ==================== CURSOS ==================== */
+function abrirModalCurso() {
+  cursoEditando = null;
+  document.getElementById('tituloModalCurso').textContent = 'Novo curso';
+  ['cursoTitulo','cursoDesc'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('veuCurso').classList.add('aberto');
+}
+async function salvarCurso() {
+  const dados = {
+    titulo: document.getElementById('cursoTitulo').value.trim(),
+    descricao: document.getElementById('cursoDesc').value.trim(),
+    nivel: parseInt(document.getElementById('cursoNivel').value)
+  };
+  if (!dados.titulo) return;
+  if (cursoEditando) await db.from('cursos').update(dados).eq('id', cursoEditando);
+  else await db.from('cursos').insert(dados);
+  fechar('veuCurso'); carregarCursos(); carregarModulosSelect();
+}
+async function apagarCurso(id) {
+  if (!confirm('Apagar este curso e tudo dentro dele?')) return;
+  await db.from('cursos').delete().eq('id', id);
+  carregarCursos(); carregarModulosSelect();
+}
+async function novoModulo(cursoId) {
+  const titulo = prompt('Título do módulo:');
+  if (!titulo) return;
+  await db.from('modulos').insert({ curso_id: cursoId, titulo });
+  carregarCursos(); carregarModulosSelect();
+}
+async function apagarModulo(id) {
+  if (!confirm('Apagar este módulo e suas aulas?')) return;
+  await db.from('modulos').delete().eq('id', id);
+  carregarCursos(); carregarModulosSelect();
+}
+function abrirModalAula(moduloId) {
+  moduloDaAula = moduloId;
+  ['aulaTitulo','aulaVideo','aulaConteudo'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('aulaPdf').value = '';
+  document.getElementById('aulaTipo').value = 'video'; trocarTipoAula();
+  document.getElementById('veuAula').classList.add('aberto');
+}
+function trocarTipoAula() {
+  const t = document.getElementById('aulaTipo').value;
+  document.getElementById('campoVideo').style.display = t === 'video' ? 'block' : 'none';
+  document.getElementById('campoPdf').style.display = t === 'pdf' ? 'block' : 'none';
+  document.getElementById('campoTexto').style.display = t === 'texto' ? 'block' : 'none';
+}
+async function salvarAula() {
+  const tipo = document.getElementById('aulaTipo').value;
+  const dados = { modulo_id: moduloDaAula, titulo: document.getElementById('aulaTitulo').value.trim(), tipo };
+  if (!dados.titulo) return;
+  try {
+    if (tipo === 'video') dados.video_url = document.getElementById('aulaVideo').value.trim();
+    if (tipo === 'texto') dados.conteudo = document.getElementById('aulaConteudo').value;
+    if (tipo === 'pdf') {
+      const f = document.getElementById('aulaPdf').files[0];
+      if (!f) return aviso('avisoAula', 'erro', 'Escolha um arquivo PDF.');
+      aviso('avisoAula', 'ok', 'Enviando arquivo...');
+      dados.arquivo_url = await uploadPdf(f, 'aulas');
+    }
+    await db.from('aulas').insert(dados);
+    fechar('veuAula'); carregarCursos();
+  } catch (e) { aviso('avisoAula', 'erro', 'Erro ao salvar: ' + e.message); }
+}
+async function apagarAula(id) {
+  if (!confirm('Apagar esta aula?')) return;
+  await db.from('aulas').delete().eq('id', id);
+  carregarCursos();
+}
+async function carregarCursos() {
+  const { data: cursos } = await db.from('cursos').select('*, modulos(*, aulas(*))').order('nivel');
+  const el = document.getElementById('listaCursos');
+  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso criado ainda. Comece pelo botão acima.</p>'; return; }
+  el.innerHTML = cursos.map(c => `
+    <div class="cartao">
+      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
+      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+      <button class="btn btn-mini" onclick="novoModulo('${c.id}')">+ Módulo</button>
+      <button class="btn btn-mini btn-perigo" onclick="apagarCurso('${c.id}')">Apagar curso</button>
+      ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+        <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
+          <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+          <button class="btn btn-mini btn-fantasma" onclick="abrirModalAula('${m.id}')">+ Aula</button>
+          <button class="btn btn-mini btn-perigo" onclick="apagarModulo('${m.id}')">Apagar</button>
+          ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
+            <div class="mudo" style="margin:6px 0 0 4px">
+              ${a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎'} ${escapeHtml(a.titulo)}
+              <a onclick="apagarAula('${a.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+/* ==================== PROVAS ==================== */
+async function carregarModulosSelect() {
+  const { data } = await db.from('modulos').select('id, titulo, cursos(titulo)').order('titulo');
+  const sel = document.getElementById('selModuloProva');
+  sel.innerHTML = '<option value="">— Escolha um módulo —</option>' +
+    (data || []).map(m => `<option value="${m.id}">${escapeHtml(m.cursos?.titulo || '')} › ${escapeHtml(m.titulo)}</option>`).join('');
+}
+async function criarProva() {
+  const moduloId = document.getElementById('selModuloProva').value;
+  if (!moduloId) return alert('Escolha um módulo primeiro.');
+  const titulo = prompt('Título da prova:');
+  if (!titulo) return;
+  const nota = prompt('Nota mínima para aprovação (0 a 100):', '70');
+  await db.from('provas').insert({ modulo_id: moduloId, titulo, nota_minima: parseInt(nota) || 70 });
+  carregarProvasDoModulo();
+}
+async function carregarProvasDoModulo() {
+  const moduloId = document.getElementById('selModuloProva').value;
+  const el = document.getElementById('listaProvas');
+  if (!moduloId) { el.innerHTML = ''; return; }
+  const { data: provas } = await db.from('provas').select('*, questoes(*)').eq('modulo_id', moduloId);
+  if (!provas || !provas.length) { el.innerHTML = '<p class="vazio">Este módulo ainda não tem prova.</p>'; return; }
+  el.innerHTML = provas.map(p => `
+    <div class="cartao">
+      <h3>${escapeHtml(p.titulo)} <span class="selo">mínimo ${p.nota_minima}%</span></h3>
+      <p class="mudo">${(p.questoes || []).length} questão(ões)</p>
+      <button class="btn btn-mini" onclick="novaQuestao('${p.id}')">+ Questão</button>
+      <button class="btn btn-mini btn-perigo" onclick="apagarProva('${p.id}')">Apagar prova</button>
+      ${(p.questoes || []).sort((a,b) => a.ordem - b.ordem).map((q, i) => `
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(201,162,39,.08)">
+          <strong>${i + 1}.</strong> ${escapeHtml(q.enunciado)}
+          <a onclick="apagarQuestao('${q.id}','${p.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
+          <div class="mudo" style="font-size:.85rem; margin-top:4px">
+            a) ${escapeHtml(q.opcao_a)} &nbsp; b) ${escapeHtml(q.opcao_b)} &nbsp; c) ${escapeHtml(q.opcao_c)} &nbsp; d) ${escapeHtml(q.opcao_d)}
+            &nbsp; <span class="selo verde">correta: ${q.correta}</span>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+async function novaQuestao(provaId) {
+  const enunciado = prompt('Enunciado da questão:'); if (!enunciado) return;
+  const a = prompt('Alternativa A:'); if (a === null) return;
+  const b = prompt('Alternativa B:'); if (b === null) return;
+  const c = prompt('Alternativa C:'); if (c === null) return;
+  const d = prompt('Alternativa D:'); if (d === null) return;
+  const correta = (prompt('Qual é a correta? (a, b, c ou d)') || '').toLowerCase().trim();
+  if (!['a','b','c','d'].includes(correta)) return alert('Resposta correta inválida.');
+  await db.from('questoes').insert({ prova_id: provaId, enunciado, opcao_a: a, opcao_b: b, opcao_c: c, opcao_d: d, correta });
+  carregarProvasDoModulo();
+}
+async function apagarProva(id) { if (confirm('Apagar prova?')) { await db.from('provas').delete().eq('id', id); carregarProvasDoModulo(); } }
+async function apagarQuestao(id) { await db.from('questoes').delete().eq('id', id); carregarProvasDoModulo(); }
+
+/* ==================== BIBLIOTECA ==================== */
+async function salvarLivro() {
+  const titulo = document.getElementById('bibTitulo').value.trim();
+  if (!titulo) return aviso('avisoBib', 'erro', 'Informe o título.');
+  const dados = {
+    titulo,
+    autor: document.getElementById('bibAutor').value.trim(),
+    descricao: document.getElementById('bibDesc').value.trim(),
+    link: document.getElementById('bibLink').value.trim() || null
+  };
+  try {
+    const capa = document.getElementById('bibCapa').files[0];
+    if (capa) { aviso('avisoBib', 'ok', 'Enviando capa...'); dados.capa_url = await uploadPdf(capa, 'capas'); }
+    const f = document.getElementById('bibArquivo').files[0];
+    if (f) { aviso('avisoBib', 'ok', 'Enviando arquivo...'); dados.arquivo_url = await uploadPdf(f, 'biblioteca'); }
+    await db.from('biblioteca').insert(dados);
+    ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('bibArquivo').value = '';
+    document.getElementById('bibCapa').value = '';
+    aviso('avisoBib', 'ok', 'Material adicionado à biblioteca.');
+    carregarBiblioteca();
+  } catch (e) { aviso('avisoBib', 'erro', 'Erro: ' + e.message); }
+}
+async function apagarLivro(id) { if (confirm('Remover da biblioteca?')) { await db.from('biblioteca').delete().eq('id', id); carregarBiblioteca(); } }
+async function carregarBiblioteca() {
+  const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
+  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+    <div class="cartao">
+      ${l.capa_url ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--linha); margin-bottom:12px">` : ''}
+      <h3>${escapeHtml(l.titulo)}</h3>
+      <p class="mudo">${escapeHtml(l.autor || '')}</p>
+      <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
+      ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Abrir PDF</a>` : ''}
+      ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
+      <button class="btn btn-mini btn-perigo" onclick="apagarLivro('${l.id}')">Remover</button>
+    </div>`).join('') || '<p class="vazio">Biblioteca vazia.</p>';
+}
+
+/* ==================== GIRAS ==================== */
+async function salvarGira() {
+  const dados = {
+    data: document.getElementById('giraData').value,
+    titulo: document.getElementById('giraTitulo').value.trim(),
+    descricao: document.getElementById('giraDesc').value.trim()
+  };
+  if (!dados.data || !dados.titulo) return aviso('avisoGira', 'erro', 'Informe data e título.');
+  await db.from('giras').insert(dados);
+  ['giraData','giraTitulo','giraDesc'].forEach(i => document.getElementById(i).value = '');
+  aviso('avisoGira', 'ok', 'Gira registrada.');
+  carregarGiras();
+}
+async function apagarGira(id) { if (confirm('Apagar registro?')) { await db.from('giras').delete().eq('id', id); carregarGiras(); } }
+async function carregarGiras() {
+  const { data } = await db.from('giras').select('*').order('data', { ascending: false });
+  document.getElementById('listaGiras').innerHTML = (data || []).map(g => `
+    <div class="cartao">
+      <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
+      <button class="btn btn-mini btn-perigo" onclick="apagarGira('${g.id}')">Apagar</button>
+    </div>`).join('') || '<p class="vazio">Nenhuma gira registrada.</p>';
+}
 </script>
 </body>
 </html>
