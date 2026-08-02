@@ -2,7 +2,14 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Casa de Estudo">
+<meta name="theme-color" content="#0D1321">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Casa de Estudo — Entrada</title>
 <style>
 /* ============================================================
@@ -252,6 +259,16 @@ function escapeHtml(t) {
 
 </script>
 <script>
+// Se já existe sessão salva, entra direto (não pede login de novo)
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return;
+  const { data: perfil } = await db.from('profiles').select('*').eq('id', session.user.id).single();
+  if (!perfil) return;
+  if (perfil.role === 'admin') { window.location.href = 'admin.html'; return; }
+  if (perfil.ativo) { window.location.href = 'aluno.html'; }
+})();
+
 function mostrar(qual) {
   document.getElementById('cxLogin').style.display = qual === 'login' ? 'block' : 'none';
   document.getElementById('cxCadastro').style.display = qual === 'cadastro' ? 'block' : 'none';
@@ -293,6 +310,11 @@ async function cadastrar() {
 
 // Enter envia
 document.getElementById('loginSenha').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 </script>
 </body>
 </html>
