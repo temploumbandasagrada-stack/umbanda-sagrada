@@ -28,6 +28,23 @@
   --raio: 14px;
 }
 
+/* Tema claro (pergaminho) */
+body.claro {
+  --noite: #EFE7D4;
+  --noite-2: #E7DCC3;
+  --altar: #F6EFDF;
+  --altar-2: #EFE6D0;
+  --ouro: #9A7B1B;
+  --ouro-claro: #7A5E12;
+  --oxala: #3A3222;
+  --oxala-2: #6B6350;
+  --agua: #4A6E90;
+  --erva: #4E7A5E;
+  --perigo: #A94E4E;
+  --linha: rgba(154, 123, 27, .30);
+  --sombra: 0 14px 40px rgba(120, 100, 50, .18);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -158,6 +175,22 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 .livro-pagina { animation: surge .3s ease; }
 .livro-capa { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; border: 1px solid var(--linha); background: #000; display: block; }
 
+/* Faixas de cursos (Netflix) */
+.faixa { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x mandatory; }
+.faixa::-webkit-scrollbar { height: 6px; }
+.faixa::-webkit-scrollbar-thumb { background: var(--linha); border-radius: 99px; }
+.curso-card { flex: 0 0 auto; width: 140px; cursor: pointer; scroll-snap-align: start; transition: transform .2s; }
+.curso-card:hover { transform: translateY(-3px); }
+.curso-capa { position: relative; width: 140px; height: 140px; border-radius: 12px; overflow: hidden; border: 1px solid var(--linha); background: var(--altar); }
+.curso-capa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.curso-semcapa { width: 100%; height: 100%; display: grid; place-items: center; font-size: 2rem; color: var(--ouro); }
+.curso-titulo { font-size: .86rem; margin-top: 8px; color: var(--oxala); line-height: 1.3; }
+.curso-card.bloqueado .curso-capa img,
+.curso-card.bloqueado .curso-semcapa { filter: grayscale(1) brightness(.45); }
+.curso-card.bloqueado { cursor: not-allowed; }
+.curso-cadeado { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6rem; }
+.curso-previa { font-size: .68rem; color: var(--oxala-2); letter-spacing: .06em; }
+
 @media (max-width: 640px) {
   .topo { padding: 14px 16px; }
   .abas, .conteudo { padding-left: 16px; padding-right: 16px; }
@@ -176,7 +209,10 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <small id="saudacao">Meu caminho</small>
     </div>
   </div>
-  <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+  <div style="display:flex; gap:8px">
+    <button class="btn btn-fantasma btn-mini" onclick="alternarTema()" id="btnTema" title="Alternar tema">🌙</button>
+    <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
+  </div>
 </header>
 
 <nav class="abas">
@@ -216,6 +252,16 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <div id="listaGiras"></div>
   </section>
 </main>
+
+<!-- MODAL CURSO (conteúdo) -->
+<div class="veu" id="veuCurso">
+  <div class="modal" style="max-width:760px">
+    <h3 id="cursoModalTitulo"></h3>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div id="cursoModalCorpo"></div>
+    <button class="btn btn-fantasma" onclick="fechar('veuCurso')">Fechar</button>
+  </div>
+</div>
 
 <!-- MODAL AULA -->
 <div class="veu" id="veuAula">
@@ -362,6 +408,20 @@ function escapeHtml(t) {
   return (t || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Tema claro/escuro
+function aplicarTema() {
+  const claro = localStorage.getItem('tema') === 'claro';
+  document.body.classList.toggle('claro', claro);
+  const b = document.getElementById('btnTema');
+  if (b) b.textContent = claro ? '☀️' : '🌙';
+}
+function alternarTema() {
+  const claro = !(localStorage.getItem('tema') === 'claro');
+  localStorage.setItem('tema', claro ? 'claro' : 'escuro');
+  aplicarTema();
+}
+aplicarTema();
+
 </script>
 <script>
 let eu = null;
@@ -394,47 +454,91 @@ async function carregarProgresso() {
   concluidas = new Set((data || []).map(p => p.aula_id));
 }
 
+const CATEGORIAS = [
+  { chave: 'basico', nome: 'Básico' },
+  { chave: 'medio', nome: 'Médio' },
+  { chave: 'avancado', nome: 'Avançado' },
+  { chave: 'outros', nome: 'Outros cursos' }
+];
+let cursosCache = [], acessosSet = new Set(), aprovadasSet = new Set();
+
 async function carregarCursos() {
   const { data: cursos } = await db.from('cursos')
     .select('*, modulos(*, aulas(*), provas(*))')
-    .eq('ativo', true).lte('nivel', eu.nivel).order('nivel');
+    .eq('ativo', true).order('categoria');
   const { data: resultados } = await db.from('resultados_provas').select('*').eq('aluno_id', eu.id);
-  const aprovadas = new Set((resultados || []).filter(r => r.aprovado).map(r => r.prova_id));
+  const { data: acessos } = await db.from('acessos_curso').select('curso_id').eq('aluno_id', eu.id);
+  cursosCache = cursos || [];
+  aprovadasSet = new Set((resultados || []).filter(r => r.aprovado).map(r => r.prova_id));
+  acessosSet = new Set((acessos || []).map(a => a.curso_id));
 
   const el = document.getElementById('listaCursos');
-  if (!cursos || !cursos.length) { el.innerHTML = '<p class="vazio">Nenhum curso liberado para o seu nível ainda.</p>'; return; }
+  if (!cursosCache.length) { el.innerHTML = '<p class="vazio">Nenhum curso disponível ainda.</p>'; return; }
 
-  el.innerHTML = cursos.map(c => {
-    const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
-    const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
-    const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+  el.innerHTML = CATEGORIAS.map(cat => {
+    const daFaixa = cursosCache.filter(c => (c.categoria || 'basico') === cat.chave);
+    if (!daFaixa.length) return '';
     return `
-    <div class="cartao">
-      <h3>${escapeHtml(c.titulo)} <span class="selo">Nível ${c.nivel}</span></h3>
-      <p class="mudo">${escapeHtml(c.descricao || '')}</p>
-      <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
-        <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
-      </div>
-      <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
-      ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
-        <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
-          <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
-          ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
-            <div style="margin:8px 0 0 4px">
-              <a onclick='abrirAula(${JSON.stringify(a).replace(/'/g, "&#39;")})' style="cursor:pointer">
-                ${concluidas.has(a.id) ? '<span style="color:var(--erva)">✔</span>' : (a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎')}
-                ${escapeHtml(a.titulo)}
-              </a>
-            </div>`).join('')}
-          ${(m.provas || []).map(p => `
-            <div style="margin:10px 0 0 4px">
-              ${aprovadas.has(p.id)
-                ? `<span class="selo verde">✔ Prova concluída: ${escapeHtml(p.titulo)}</span>`
-                : `<button class="btn btn-mini" onclick="abrirProva('${p.id}')">Fazer prova: ${escapeHtml(p.titulo)}</button>`}
-            </div>`).join('')}
-        </div>`).join('')}
-    </div>`;
-  }).join('');
+      <div style="margin-bottom:26px">
+        <h3 class="serif" style="font-size:1.35rem; margin-bottom:10px">${cat.nome}</h3>
+        <div class="faixa">
+          ${daFaixa.map(c => {
+            const liberado = acessosSet.has(c.id);
+            const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
+            const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
+            const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+            return `
+              <div class="curso-card ${liberado ? '' : 'bloqueado'}" onclick="${liberado ? `abrirCurso('${c.id}')` : `avisoBloqueado()`}">
+                <div class="curso-capa">
+                  ${c.capa_url ? `<img src="${c.capa_url}" alt="${escapeHtml(c.titulo)}">` : `<div class="curso-semcapa">✦</div>`}
+                  ${liberado ? '' : '<div class="curso-cadeado">🔒</div>'}
+                </div>
+                <p class="curso-titulo">${escapeHtml(c.titulo)}</p>
+                ${liberado && pct > 0 ? `<div style="height:4px; background:var(--noite); border-radius:99px; overflow:hidden; margin-top:4px"><div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro))"></div></div>` : ''}
+                ${liberado ? '' : '<span class="curso-previa">Prévia — em breve</span>'}
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('') || '<p class="vazio">Nenhum curso disponível ainda.</p>';
+}
+
+function avisoBloqueado() {
+  alert('Este curso ainda não foi liberado para você pela direção da casa. Em breve!');
+}
+
+function abrirCurso(cursoId) {
+  const c = cursosCache.find(x => x.id === cursoId);
+  if (!c) return;
+  document.getElementById('cursoModalTitulo').textContent = c.titulo;
+  const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
+  const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
+  const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+  document.getElementById('cursoModalCorpo').innerHTML = `
+    <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+    <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+      <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
+    </div>
+    <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
+    ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+      <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
+        <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+        ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
+          <div style="margin:8px 0 0 4px">
+            <a onclick='abrirAula(${JSON.stringify(a).replace(/'/g, "&#39;")})' style="cursor:pointer">
+              ${concluidas.has(a.id) ? '<span style="color:var(--erva)">✔</span>' : (a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎')}
+              ${escapeHtml(a.titulo)}
+            </a>
+          </div>`).join('')}
+        ${(m.provas || []).map(p => `
+          <div style="margin:10px 0 0 4px">
+            ${aprovadasSet.has(p.id)
+              ? `<span class="selo verde">✔ Prova concluída: ${escapeHtml(p.titulo)}</span>`
+              : `<button class="btn btn-mini" onclick="abrirProva('${p.id}')">Fazer prova: ${escapeHtml(p.titulo)}</button>`}
+          </div>`).join('')}
+      </div>`).join('')}
+  `;
+  document.getElementById('veuCurso').classList.add('aberto');
 }
 
 function abrirAula(aula) {
