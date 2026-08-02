@@ -223,14 +223,16 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Biblioteca</h2>
     <div class="firmeza"><span class="estrela">✦</span></div>
     <div class="cartao">
-      <h3>Indicar novo livro / material</h3>
+      <h3 id="bibFormTitulo">Indicar novo livro / material</h3>
+      <input type="hidden" id="bibEditId" value="">
       <label>Título</label><input id="bibTitulo">
       <label>Autor</label><input id="bibAutor">
       <label>Descrição</label><textarea id="bibDesc"></textarea>
       <label>Capa do livro (imagem, opcional)</label><input type="file" id="bibCapa" accept="image/*">
       <label>Arquivo PDF (opcional)</label><input type="file" id="bibArquivo" accept=".pdf">
       <label>Ou link externo (opcional)</label><input id="bibLink" placeholder="https://...">
-      <button class="btn" onclick="salvarLivro()">Adicionar à biblioteca</button>
+      <button class="btn" id="bibBtnSalvar" onclick="salvarLivro()">Adicionar à biblioteca</button>
+      <button class="btn btn-fantasma" id="bibBtnCancelar" style="display:none" onclick="cancelarEdicaoLivro()">Cancelar edição</button>
       <div class="aviso" id="avisoBib"></div>
     </div>
     <div class="grade" id="listaBiblioteca"></div>
@@ -542,9 +544,12 @@ async function apagarProva(id) { if (confirm('Apagar prova?')) { await db.from('
 async function apagarQuestao(id) { await db.from('questoes').delete().eq('id', id); carregarProvasDoModulo(); }
 
 /* ==================== BIBLIOTECA ==================== */
+let livrosCache = [];
+
 async function salvarLivro() {
   const titulo = document.getElementById('bibTitulo').value.trim();
   if (!titulo) return aviso('avisoBib', 'erro', 'Informe o título.');
+  const editId = document.getElementById('bibEditId').value;
   const dados = {
     titulo,
     autor: document.getElementById('bibAutor').value.trim(),
@@ -556,18 +561,52 @@ async function salvarLivro() {
     if (capa) { aviso('avisoBib', 'ok', 'Enviando capa...'); dados.capa_url = await uploadPdf(capa, 'capas'); }
     const f = document.getElementById('bibArquivo').files[0];
     if (f) { aviso('avisoBib', 'ok', 'Enviando arquivo...'); dados.arquivo_url = await uploadPdf(f, 'biblioteca'); }
-    await db.from('biblioteca').insert(dados);
-    ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('bibArquivo').value = '';
-    document.getElementById('bibCapa').value = '';
-    aviso('avisoBib', 'ok', 'Material adicionado à biblioteca.');
+
+    if (editId) {
+      // ao editar, só troca capa/arquivo se um novo foi enviado
+      await db.from('biblioteca').update(dados).eq('id', editId);
+      aviso('avisoBib', 'ok', 'Livro atualizado.');
+    } else {
+      await db.from('biblioteca').insert(dados);
+      aviso('avisoBib', 'ok', 'Material adicionado à biblioteca.');
+    }
+    cancelarEdicaoLivro();
     carregarBiblioteca();
   } catch (e) { aviso('avisoBib', 'erro', 'Erro: ' + e.message); }
 }
-async function apagarLivro(id) { if (confirm('Remover da biblioteca?')) { await db.from('biblioteca').delete().eq('id', id); carregarBiblioteca(); } }
+
+function editarLivro(id) {
+  const l = livrosCache.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('bibEditId').value = l.id;
+  document.getElementById('bibTitulo').value = l.titulo || '';
+  document.getElementById('bibAutor').value = l.autor || '';
+  document.getElementById('bibDesc').value = l.descricao || '';
+  document.getElementById('bibLink').value = l.link || '';
+  document.getElementById('bibCapa').value = '';
+  document.getElementById('bibArquivo').value = '';
+  document.getElementById('bibFormTitulo').textContent = 'Editar livro';
+  document.getElementById('bibBtnSalvar').textContent = 'Salvar alterações';
+  document.getElementById('bibBtnCancelar').style.display = 'inline-block';
+  document.getElementById('bibTitulo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelarEdicaoLivro() {
+  document.getElementById('bibEditId').value = '';
+  ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('bibCapa').value = '';
+  document.getElementById('bibArquivo').value = '';
+  document.getElementById('bibFormTitulo').textContent = 'Indicar novo livro / material';
+  document.getElementById('bibBtnSalvar').textContent = 'Adicionar à biblioteca';
+  document.getElementById('bibBtnCancelar').style.display = 'none';
+}
+
+async function apagarLivro(id) { if (confirm('Excluir este livro da biblioteca?')) { await db.from('biblioteca').delete().eq('id', id); carregarBiblioteca(); } }
+
 async function carregarBiblioteca() {
   const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
-  document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
+  livrosCache = data || [];
+  document.getElementById('listaBiblioteca').innerHTML = livrosCache.map(l => `
     <div class="cartao">
       ${l.capa_url ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--linha); margin-bottom:12px">` : ''}
       <h3>${escapeHtml(l.titulo)}</h3>
@@ -575,7 +614,8 @@ async function carregarBiblioteca() {
       <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
       ${l.arquivo_url ? `<a href="${l.arquivo_url}" target="_blank" class="btn btn-mini btn-fantasma">Abrir PDF</a>` : ''}
       ${l.link ? `<a href="${escapeHtml(l.link)}" target="_blank" class="btn btn-mini btn-fantasma">Abrir link</a>` : ''}
-      <button class="btn btn-mini btn-perigo" onclick="apagarLivro('${l.id}')">Remover</button>
+      <button class="btn btn-mini" onclick="editarLivro('${l.id}')">Editar</button>
+      <button class="btn btn-mini btn-perigo" onclick="apagarLivro('${l.id}')">Excluir</button>
     </div>`).join('') || '<p class="vazio">Biblioteca vazia.</p>';
 }
 
