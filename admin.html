@@ -227,6 +227,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <label>Título</label><input id="bibTitulo">
       <label>Autor</label><input id="bibAutor">
       <label>Descrição</label><textarea id="bibDesc"></textarea>
+      <label>Capa do livro (imagem, opcional)</label><input type="file" id="bibCapa" accept="image/*">
       <label>Arquivo PDF (opcional)</label><input type="file" id="bibArquivo" accept=".pdf">
       <label>Ou link externo (opcional)</label><input id="bibLink" placeholder="https://...">
       <button class="btn" onclick="salvarLivro()">Adicionar à biblioteca</button>
@@ -240,11 +241,13 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Registro de giras</h2>
     <div class="firmeza"><span class="estrela">✦</span></div>
     <div class="cartao">
-      <h3>Registrar gira</h3>
+      <h3>Abrir gira (liberar formulário para os filhos)</h3>
       <label>Data</label><input type="date" id="giraData">
       <label>Título</label><input id="giraTitulo" placeholder="Ex.: Gira de Pretos Velhos">
-      <label>O que aconteceu na gira</label><textarea id="giraDesc"></textarea>
-      <button class="btn" onclick="salvarGira()">Registrar</button>
+      <label>Orixá</label><input id="giraOrixa" placeholder="Ex.: Oxalá">
+      <label>Linha</label><input id="giraLinha" placeholder="Ex.: Linha das Almas">
+      <label>Observações (opcional)</label><textarea id="giraDesc"></textarea>
+      <button class="btn" onclick="salvarGira()">Abrir gira</button>
       <div class="aviso" id="avisoGira"></div>
     </div>
     <div id="listaGiras"></div>
@@ -285,6 +288,14 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <button class="btn" onclick="salvarAula()">Salvar aula</button>
     <button class="btn btn-fantasma" onclick="fechar('veuAula')">Cancelar</button>
     <div class="aviso" id="avisoAula"></div>
+  </div>
+</div>
+
+<!-- MODAL VER RELATO -->
+<div class="veu" id="veuRelato">
+  <div class="modal" style="max-width:640px">
+    <div id="relatoCorpo"></div>
+    <button class="btn btn-fantasma" onclick="fechar('veuRelato')">Fechar</button>
   </div>
 </div>
 
@@ -541,11 +552,14 @@ async function salvarLivro() {
     link: document.getElementById('bibLink').value.trim() || null
   };
   try {
+    const capa = document.getElementById('bibCapa').files[0];
+    if (capa) { aviso('avisoBib', 'ok', 'Enviando capa...'); dados.capa_url = await uploadPdf(capa, 'capas'); }
     const f = document.getElementById('bibArquivo').files[0];
     if (f) { aviso('avisoBib', 'ok', 'Enviando arquivo...'); dados.arquivo_url = await uploadPdf(f, 'biblioteca'); }
     await db.from('biblioteca').insert(dados);
     ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('bibArquivo').value = '';
+    document.getElementById('bibCapa').value = '';
     aviso('avisoBib', 'ok', 'Material adicionado à biblioteca.');
     carregarBiblioteca();
   } catch (e) { aviso('avisoBib', 'erro', 'Erro: ' + e.message); }
@@ -555,6 +569,7 @@ async function carregarBiblioteca() {
   const { data } = await db.from('biblioteca').select('*').order('created_at', { ascending: false });
   document.getElementById('listaBiblioteca').innerHTML = (data || []).map(l => `
     <div class="cartao">
+      ${l.capa_url ? `<img src="${l.capa_url}" alt="Capa de ${escapeHtml(l.titulo)}" style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; border:1px solid var(--linha); margin-bottom:12px">` : ''}
       <h3>${escapeHtml(l.titulo)}</h3>
       <p class="mudo">${escapeHtml(l.autor || '')}</p>
       <p style="font-size:.9rem; margin-top:6px">${escapeHtml(l.descricao || '')}</p>
@@ -569,23 +584,78 @@ async function salvarGira() {
   const dados = {
     data: document.getElementById('giraData').value,
     titulo: document.getElementById('giraTitulo').value.trim(),
+    orixa: document.getElementById('giraOrixa').value.trim(),
+    linha: document.getElementById('giraLinha').value.trim(),
     descricao: document.getElementById('giraDesc').value.trim()
   };
   if (!dados.data || !dados.titulo) return aviso('avisoGira', 'erro', 'Informe data e título.');
   await db.from('giras').insert(dados);
-  ['giraData','giraTitulo','giraDesc'].forEach(i => document.getElementById(i).value = '');
-  aviso('avisoGira', 'ok', 'Gira registrada.');
+  ['giraData','giraTitulo','giraOrixa','giraLinha','giraDesc'].forEach(i => document.getElementById(i).value = '');
+  aviso('avisoGira', 'ok', 'Gira aberta. O formulário já está liberado para os filhos.');
   carregarGiras();
 }
-async function apagarGira(id) { if (confirm('Apagar registro?')) { await db.from('giras').delete().eq('id', id); carregarGiras(); } }
+async function apagarGira(id) { if (confirm('Apagar esta gira e todos os relatos dela?')) { await db.from('giras').delete().eq('id', id); carregarGiras(); } }
+
 async function carregarGiras() {
-  const { data } = await db.from('giras').select('*').order('data', { ascending: false });
-  document.getElementById('listaGiras').innerHTML = (data || []).map(g => `
+  const { data: giras } = await db.from('giras').select('*').order('data', { ascending: false });
+  const { data: relatos } = await db.from('relatos_gira').select('*, profiles(nome)').eq('enviado', true);
+  const porGira = {};
+  (relatos || []).forEach(r => { (porGira[r.gira_id] = porGira[r.gira_id] || []).push(r); });
+
+  document.getElementById('listaGiras').innerHTML = (giras || []).map(g => {
+    const rs = porGira[g.id] || [];
+    return `
     <div class="cartao">
       <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
-      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
-      <button class="btn btn-mini btn-perigo" onclick="apagarGira('${g.id}')">Apagar</button>
-    </div>`).join('') || '<p class="vazio">Nenhuma gira registrada.</p>';
+      <p class="mudo" style="margin-top:4px">${[g.orixa && ('Orixá: ' + escapeHtml(g.orixa)), g.linha && ('Linha: ' + escapeHtml(g.linha))].filter(Boolean).join(' · ')}</p>
+      ${g.descricao ? `<p style="white-space:pre-wrap; margin-top:6px">${escapeHtml(g.descricao)}</p>` : ''}
+      <p class="mudo" style="margin-top:10px; font-size:.85rem">${rs.length} relato(s) enviado(s)</p>
+      ${rs.map(r => `<button class="btn btn-mini btn-fantasma" onclick='verRelato(${JSON.stringify(r).replace(/'/g,"&#39;")}, ${JSON.stringify(g).replace(/'/g,"&#39;")})'>${escapeHtml(r.profiles?.nome || 'Filho')}</button>`).join(' ')}
+      <br><button class="btn btn-mini btn-perigo" onclick="apagarGira('${g.id}')">Apagar gira</button>
+    </div>`;
+  }).join('') || '<p class="vazio">Nenhuma gira aberta.</p>';
+}
+
+function verRelato(r, g) {
+  const d = r.dados || {};
+  let h = `<h3>Relato de ${escapeHtml(r.profiles?.nome || 'Filho')}</h3>`;
+  h += `<p class="mudo">${escapeHtml(g.titulo)} — ${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</p>`;
+  h += `<p style="margin-top:10px"><strong>Funções:</strong> ${(d.funcoes || []).map(escapeHtml).join(', ') || '—'}</p>`;
+
+  if ((d.pessoas_cambone || []).length) {
+    h += `<p style="margin-top:12px"><strong>Atendimentos (cambone):</strong></p>`;
+    d.pessoas_cambone.forEach((p, i) => {
+      h += `<div style="border-left:2px solid var(--linha); padding-left:12px; margin:8px 0">
+        <strong>${i+1}. ${escapeHtml(p.consulente || '')}</strong><br>
+        <span class="mudo">Entidade: ${escapeHtml(p.entidade || '—')} · Médium: ${escapeHtml(p.medium || '—')}</span><br>
+        <span>${escapeHtml(p.falado || '')}</span>
+        ${p.banho ? `<br><em class="mudo">Banho/trabalho: ${escapeHtml(p.banho)}</em>` : ''}
+      </div>`;
+    });
+  }
+  if ((d.consulentes_frente || []).length) {
+    h += `<p style="margin-top:12px"><strong>Consulentes (médium de frente):</strong></p>`;
+    d.consulentes_frente.forEach((c, i) => {
+      h += `<div class="mudo" style="margin:4px 0">${i+1}. ${escapeHtml(c.nome || '')} — ${escapeHtml(c.entidade || '')}</div>`;
+    });
+    // comparação de nomes
+    const nomesFrente = (d.consulentes_frente || []).map(c => (c.nome||'').trim().toLowerCase()).filter(Boolean);
+    const nomesCambone = (d.pessoas_cambone || []).map(p => (p.consulente||'').trim().toLowerCase()).filter(Boolean);
+    if (nomesFrente.length && nomesCambone.length) {
+      const soFrente = nomesFrente.filter(n => !nomesCambone.includes(n));
+      const soCambone = nomesCambone.filter(n => !nomesFrente.includes(n));
+      if (!soFrente.length && !soCambone.length) {
+        h += `<p class="selo verde" style="margin-top:10px">✔ Os nomes da frente e do cambone batem.</p>`;
+      } else {
+        h += `<div class="aviso erro" style="display:block; margin-top:10px">⚠ Divergência de nomes:${soFrente.length ? '<br>Só na frente: ' + soFrente.join(', ') : ''}${soCambone.length ? '<br>Só no cambone: ' + soCambone.join(', ') : ''}</div>`;
+      }
+    }
+  }
+  if (d.descricao) h += `<p style="margin-top:12px"><strong>Descrição pessoal:</strong><br><span style="white-space:pre-wrap">${escapeHtml(d.descricao)}</span></p>`;
+  if (d.feedback) h += `<p style="margin-top:12px"><strong>Feedback para a casa:</strong><br><span style="white-space:pre-wrap">${escapeHtml(d.feedback)}</span></p>`;
+
+  document.getElementById('relatoCorpo').innerHTML = h;
+  document.getElementById('veuRelato').classList.add('aberto');
 }
 </script>
 </body>
