@@ -182,6 +182,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 <nav class="abas">
   <button class="aba ativa" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
   <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="aba" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
   <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
 </nav>
 
@@ -199,6 +200,13 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Biblioteca da casa</h2>
     <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
     <div class="grade" id="listaBiblioteca"></div>
+  </section>
+
+  <!-- ==================== ANOTAÇÕES ==================== -->
+  <section class="secao" id="sec-anotacoes">
+    <h2>Minhas anotações e dúvidas</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="listaAnotacoes"></div>
   </section>
 
   <!-- ==================== GIRAS ==================== -->
@@ -232,23 +240,42 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 
 <!-- MODAL LEITOR DE LIVRO -->
 <div class="veu" id="veuLeitor">
-  <div class="modal" style="max-width:900px; padding:18px">
+  <div class="modal modal-leitor" style="max-width:960px; padding:14px; width:96vw">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
-      <h3 id="leitorTitulo" style="margin:0"></h3>
-      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="fecharLeitor()">Fechar</button>
+      <h3 id="leitorTitulo" style="margin:0; font-size:1.15rem"></h3>
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-mini" style="margin:0" onclick="abrirMenuNota()">+ Anotar</button>
+        <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="fecharLeitor()">Fechar</button>
+      </div>
     </div>
-    <div style="margin:10px 0 6px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+    <div style="margin:8px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
       <div id="leitorBarra" style="height:100%; width:0%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px; transition:width .3s"></div>
     </div>
-    <p class="mudo" id="leitorStatus" style="font-size:.82rem; margin-bottom:10px"></p>
-    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:10px; flex-wrap:wrap">
-      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹ Anterior</button>
-      <span class="mudo" id="leitorPagina" style="font-size:.9rem"></span>
-      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">Próxima ›</button>
+    <p class="mudo" id="leitorStatus" style="font-size:.8rem; margin-bottom:8px"></p>
+    <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:8px; flex-wrap:wrap">
+      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹</button>
+      <span class="mudo" id="leitorPagina" style="font-size:.88rem"></span>
+      <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">›</button>
     </div>
-    <div style="max-height:62vh; overflow:auto; text-align:center; background:#000; border:1px solid var(--linha); border-radius:10px; padding:8px">
+    <div style="max-height:74vh; overflow:auto; text-align:center; background:#fff; border:1px solid var(--linha); border-radius:10px; padding:4px">
       <canvas id="leitorCanvas" style="max-width:100%; height:auto"></canvas>
     </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA NOTA (dúvida / anotação) -->
+<div class="veu" id="veuNota">
+  <div class="modal" style="max-width:460px">
+    <h3 id="notaTitulo">Nova anotação</h3>
+    <p class="mudo" id="notaContexto" style="font-size:.85rem"></p>
+    <div style="display:flex; gap:8px; margin:12px 0">
+      <button class="btn btn-mini" id="notaBtnAnot" style="margin:0" onclick="tipoNota('anotacao')">Anotação</button>
+      <button class="btn btn-fantasma btn-mini" id="notaBtnDuv" style="margin:0" onclick="tipoNota('duvida')">Dúvida</button>
+    </div>
+    <textarea id="notaTexto" placeholder="Escreva aqui..."></textarea>
+    <button class="btn" onclick="salvarNota()">Guardar</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuNota')">Cancelar</button>
+    <div class="aviso" id="avisoNota"></div>
   </div>
 </div>
 
@@ -357,6 +384,7 @@ function irPara(secao) {
   document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
   document.getElementById('sec-' + secao).classList.add('ativa');
   document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+  if (secao === 'anotacoes') carregarAnotacoes();
 }
 function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
 
@@ -550,7 +578,11 @@ async function renderizarPagina() {
   const page = await pdfAtual.getPage(paginaAtual);
   const canvas = document.getElementById('leitorCanvas');
   const ctx = canvas.getContext('2d');
-  const viewport = page.getViewport({ scale: 1.5 });
+  // ajusta a escala para preencher a largura disponível (bom no celular)
+  const base = page.getViewport({ scale: 1 });
+  const larguraAlvo = Math.min(canvas.parentElement.clientWidth - 12, 1000);
+  const escala = Math.max(larguraAlvo / base.width, 1);
+  const viewport = page.getViewport({ scale: escala });
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   await page.render({ canvasContext: ctx, viewport }).promise;
@@ -583,6 +615,62 @@ function fecharLeitor() {
   document.getElementById('veuLeitor').classList.remove('aberto');
   pdfAtual = null; livroAtual = null;
   carregarBiblioteca(); // atualiza a barra no cartão
+}
+
+/* ==================== NOTAS (dúvida / anotação) ==================== */
+let notaContexto = {}, notaTipoAtual = 'anotacao';
+
+function abrirMenuNota() {
+  // contexto: livro aberto no leitor
+  notaContexto = { origem: 'livro', ref_id: livroAtual.id, ref_titulo: livroAtual.titulo, pagina: paginaAtual };
+  document.getElementById('notaTitulo').textContent = 'Nova nota';
+  document.getElementById('notaContexto').textContent = `${livroAtual.titulo} — página ${paginaAtual}`;
+  document.getElementById('notaTexto').value = '';
+  tipoNota('anotacao');
+  document.getElementById('veuNota').classList.add('aberto');
+}
+function tipoNota(t) {
+  notaTipoAtual = t;
+  const a = document.getElementById('notaBtnAnot'), d = document.getElementById('notaBtnDuv');
+  a.className = 'btn btn-mini' + (t === 'anotacao' ? '' : ' btn-fantasma');
+  d.className = 'btn btn-mini' + (t === 'duvida' ? '' : ' btn-fantasma');
+  a.style.margin = d.style.margin = '0';
+}
+async function salvarNota() {
+  const texto = document.getElementById('notaTexto').value.trim();
+  if (!texto) { const el = document.getElementById('avisoNota'); el.className = 'aviso erro'; el.textContent = 'Escreva algo antes de guardar.'; return; }
+  await db.from('notas').insert({
+    aluno_id: eu.id, tipo: notaTipoAtual,
+    origem: notaContexto.origem, ref_id: notaContexto.ref_id,
+    ref_titulo: notaContexto.ref_titulo, pagina: notaContexto.pagina || null, texto
+  });
+  document.getElementById('veuNota').classList.remove('aberto');
+}
+
+async function carregarAnotacoes() {
+  const { data } = await db.from('notas').select('*').eq('aluno_id', eu.id).order('created_at', { ascending: false });
+  const notas = data || [];
+  if (!notas.length) { document.getElementById('listaAnotacoes').innerHTML = '<p class="vazio">Você ainda não tem anotações nem dúvidas.</p>'; return; }
+
+  // agrupa por tópico (ref_titulo)
+  const grupos = {};
+  notas.forEach(n => { const k = n.ref_titulo || 'Geral'; (grupos[k] = grupos[k] || []).push(n); });
+
+  document.getElementById('listaAnotacoes').innerHTML = Object.entries(grupos).map(([topico, lista]) => `
+    <div class="cartao">
+      <h3>${escapeHtml(topico)} <span class="selo">${lista[0].origem}</span></h3>
+      ${lista.map(n => `
+        <div style="border-left:2px solid ${n.tipo === 'duvida' ? 'var(--agua)' : 'var(--linha)'}; padding-left:12px; margin:10px 0">
+          <span class="selo ${n.tipo === 'duvida' ? 'azul' : ''}" style="font-size:.66rem">${n.tipo === 'duvida' ? 'Dúvida' : 'Anotação'}${n.pagina ? ' · pág. ' + n.pagina : ''}</span>
+          <p style="white-space:pre-wrap; margin-top:6px">${escapeHtml(n.texto)}</p>
+          <a onclick="apagarNota('${n.id}')" style="color:var(--perigo); cursor:pointer; font-size:.78rem">apagar</a>
+        </div>`).join('')}
+    </div>`).join('');
+}
+async function apagarNota(id) {
+  if (!confirm('Apagar esta nota?')) return;
+  await db.from('notas').delete().eq('id', id);
+  carregarAnotacoes();
 }
 
 /* ==================== GIRAS ==================== */
