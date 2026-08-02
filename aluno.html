@@ -199,7 +199,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 
   <!-- ==================== GIRAS ==================== -->
   <section class="secao" id="sec-giras">
-    <h2>Giras e minhas anotações</h2>
+    <h2>Giras e relatos</h2>
     <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
     <div id="listaGiras"></div>
   </section>
@@ -245,6 +245,47 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <div style="max-height:62vh; overflow:auto; text-align:center; background:#000; border:1px solid var(--linha); border-radius:10px; padding:8px">
       <canvas id="leitorCanvas" style="max-width:100%; height:auto"></canvas>
     </div>
+  </div>
+</div>
+
+<!-- MODAL FORMULÁRIO DE RELATO PÓS-GIRA -->
+<div class="veu" id="veuRelato">
+  <div class="modal" style="max-width:720px">
+    <h3 id="relatoTitulo"></h3>
+    <p class="mudo" id="relatoSub" style="margin-bottom:8px"></p>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+
+    <label>Como você atuou nesta gira? (pode marcar mais de uma)</label>
+    <div id="relatoFuncoes"></div>
+
+    <!-- Bloco cambone -->
+    <div id="blocoCambone" style="display:none; margin-top:16px">
+      <h3 style="font-size:1.15rem">Atendimentos (cambone)</h3>
+      <p class="mudo" style="font-size:.82rem">Para cada pessoa que passou, preencha os campos abaixo.</p>
+      <div id="camposCambone_lista"></div>
+      <button type="button" class="btn btn-mini btn-fantasma addbtn" id="relatoAddCambone" onclick="addLinhaCambone()">+ Adicionar pessoa</button>
+    </div>
+
+    <!-- Bloco médium de frente -->
+    <div id="blocoFrente" style="display:none; margin-top:16px">
+      <h3 style="font-size:1.15rem">Consulentes (médium de frente)</h3>
+      <p class="mudo" style="font-size:.82rem">Liste cada consulente e com qual entidade passou. Esses nomes serão comparados com os do cambone.</p>
+      <div id="camposFrente_lista"></div>
+      <button type="button" class="btn btn-mini btn-fantasma addbtn" id="relatoAddFrente" onclick="addLinhaFrente()">+ Adicionar consulente</button>
+    </div>
+
+    <label style="margin-top:16px">Descrição — o que você fez, sentiu, viu e ouviu</label>
+    <textarea id="relatoDescricao"></textarea>
+
+    <label>Feedback — o que pode melhorar na casa</label>
+    <textarea id="relatoFeedback"></textarea>
+
+    <div id="relatoAcoes" style="margin-top:6px">
+      <button class="btn" onclick="enviarRelato()">Enviar relato</button>
+      <button class="btn btn-fantasma" onclick="salvarRascunho()">Guardar rascunho</button>
+    </div>
+    <button class="btn btn-fantasma" onclick="fechar('veuRelato')">Fechar</button>
+    <div class="aviso" id="avisoRelato"></div>
   </div>
 </div>
 
@@ -518,31 +559,147 @@ function fecharLeitor() {
 }
 
 /* ==================== GIRAS ==================== */
+const FUNCOES = ['Cambone', 'Cambone chefe', 'Médium de frente', 'Médium de incorporação', 'Ogã', 'Porteira', 'Assistente'];
+
 async function carregarGiras() {
   const { data: giras } = await db.from('giras').select('*').order('data', { ascending: false });
-  const { data: minhas } = await db.from('anotacoes_gira').select('*').eq('aluno_id', eu.id);
-  const mapa = {}; (minhas || []).forEach(a => mapa[a.gira_id] = a);
+  const { data: meus } = await db.from('relatos_gira').select('*').eq('aluno_id', eu.id);
+  const mapa = {}; (meus || []).forEach(r => mapa[r.gira_id] = r);
 
   document.getElementById('listaGiras').innerHTML = (giras || []).map(g => {
-    const nota = mapa[g.id];
+    const r = mapa[g.id];
+    const enviado = r && r.enviado;
+    const sub = [g.orixa && ('Orixá: ' + escapeHtml(g.orixa)), g.linha && ('Linha: ' + escapeHtml(g.linha))].filter(Boolean).join(' · ');
     return `
     <div class="cartao">
       <h3>${escapeHtml(g.titulo)} <span class="selo azul">${new Date(g.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
-      <p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(g.descricao || '')}</p>
-      <label>Minhas anotações pós-gira</label>
-      <textarea id="nota_${g.id}">${escapeHtml(nota ? nota.texto : '')}</textarea>
-      <button class="btn btn-mini" onclick="salvarAnotacao('${g.id}', ${nota ? `'${nota.id}'` : 'null'})">Guardar anotação</button>
-      <span class="mudo" id="ok_${g.id}" style="font-size:.8rem"></span>
+      ${sub ? `<p class="mudo" style="margin-top:4px">${sub}</p>` : ''}
+      ${g.descricao ? `<p style="white-space:pre-wrap; margin-top:6px">${escapeHtml(g.descricao)}</p>` : ''}
+      ${enviado
+        ? `<p class="selo verde" style="margin-top:10px">✔ Relato enviado</p>
+           <button class="btn btn-mini btn-fantasma" onclick='abrirRelato(${JSON.stringify(g).replace(/'/g,"&#39;")}, true)'>Ver meu relato</button>`
+        : `<button class="btn btn-mini" onclick='abrirRelato(${JSON.stringify(g).replace(/'/g,"&#39;")}, false)'>${r ? 'Continuar preenchendo' : 'Preencher relato'}</button>`}
     </div>`;
-  }).join('') || '<p class="vazio">Nenhuma gira registrada ainda.</p>';
+  }).join('') || '<p class="vazio">Nenhuma gira aberta ainda.</p>';
 }
-async function salvarAnotacao(giraId, anotacaoId) {
-  const texto = document.getElementById('nota_' + giraId).value.trim();
-  if (!texto) return;
-  if (anotacaoId) await db.from('anotacoes_gira').update({ texto }).eq('id', anotacaoId);
-  else await db.from('anotacoes_gira').insert({ gira_id: giraId, aluno_id: eu.id, texto });
-  document.getElementById('ok_' + giraId).textContent = ' ✔ guardado';
-  setTimeout(() => carregarGiras(), 800);
+
+let giraAtual = null, relatoAtual = null, somenteVer = false;
+
+async function abrirRelato(gira, ver) {
+  giraAtual = gira; somenteVer = ver;
+  const { data: r } = await db.from('relatos_gira').select('*').eq('aluno_id', eu.id).eq('gira_id', gira.id).maybeSingle();
+  relatoAtual = r;
+  const d = (r && r.dados) || {};
+
+  document.getElementById('relatoTitulo').textContent = gira.titulo;
+  document.getElementById('relatoSub').textContent =
+    new Date(gira.data + 'T12:00').toLocaleDateString('pt-BR') +
+    (gira.orixa ? ' · ' + gira.orixa : '') + (gira.linha ? ' · ' + gira.linha : '');
+
+  // funções (checkbox)
+  document.getElementById('relatoFuncoes').innerHTML = FUNCOES.map(f => `
+    <label style="display:flex; gap:8px; align-items:center; text-transform:none; letter-spacing:0; color:var(--oxala); margin:6px 0; cursor:pointer">
+      <input type="checkbox" class="fnChk" value="${f}" style="width:auto" ${ (d.funcoes||[]).includes(f) ? 'checked' : ''} onchange="atualizarCamposFuncao()"> ${f}
+    </label>`).join('');
+
+  document.getElementById('camposCambone_lista').innerHTML = '';
+  document.getElementById('camposFrente_lista').innerHTML = '';
+  (d.pessoas_cambone || []).forEach(p => addLinhaCambone(p));
+  (d.consulentes_frente || []).forEach(c => addLinhaFrente(c));
+  document.getElementById('relatoDescricao').value = d.descricao || '';
+  document.getElementById('relatoFeedback').value = d.feedback || '';
+
+  atualizarCamposFuncao();
+  bloquearSeVer();
+  document.getElementById('veuRelato').classList.add('aberto');
+}
+
+function funcoesMarcadas() {
+  return Array.from(document.querySelectorAll('.fnChk:checked')).map(c => c.value);
+}
+function atualizarCamposFuncao() {
+  const fs = funcoesMarcadas();
+  const temCambone = fs.some(f => f.startsWith('Cambone'));
+  const temFrente = fs.includes('Médium de frente');
+  document.getElementById('blocoCambone').style.display = temCambone ? 'block' : 'none';
+  document.getElementById('blocoFrente').style.display = temFrente ? 'block' : 'none';
+}
+
+function addLinhaCambone(p = {}) {
+  const div = document.createElement('div');
+  div.className = 'linhaCambone';
+  div.style = 'border-left:2px solid var(--linha); padding-left:12px; margin:10px 0';
+  div.innerHTML = `
+    <label>Nome do consulente</label><input class="c_consulente" value="${escapeHtml(p.consulente||'')}">
+    <label>Nome da entidade</label><input class="c_entidade" value="${escapeHtml(p.entidade||'')}">
+    <label>Nome do médium</label><input class="c_medium" value="${escapeHtml(p.medium||'')}">
+    <label>O que foi falado</label><textarea class="c_falado">${escapeHtml(p.falado||'')}</textarea>
+    <label>Banho / trabalho passado (se houver)</label><textarea class="c_banho">${escapeHtml(p.banho||'')}</textarea>
+    <button type="button" class="btn btn-mini btn-perigo" onclick="this.parentElement.remove()">Remover pessoa</button>`;
+  document.getElementById('camposCambone_lista').appendChild(div);
+}
+function addLinhaFrente(c = {}) {
+  const div = document.createElement('div');
+  div.className = 'linhaFrente';
+  div.style = 'display:flex; gap:8px; margin:8px 0; flex-wrap:wrap';
+  div.innerHTML = `
+    <input class="f_nome" placeholder="Nome do consulente" value="${escapeHtml(c.nome||'')}" style="flex:1; min-width:140px">
+    <input class="f_entidade" placeholder="Passou com qual entidade" value="${escapeHtml(c.entidade||'')}" style="flex:1; min-width:140px">
+    <button type="button" class="btn btn-mini btn-perigo" style="margin:0" onclick="this.parentElement.remove()">×</button>`;
+  document.getElementById('camposFrente_lista').appendChild(div);
+}
+
+function coletarDados() {
+  const pessoas_cambone = Array.from(document.querySelectorAll('.linhaCambone')).map(d => ({
+    consulente: d.querySelector('.c_consulente').value.trim(),
+    entidade: d.querySelector('.c_entidade').value.trim(),
+    medium: d.querySelector('.c_medium').value.trim(),
+    falado: d.querySelector('.c_falado').value.trim(),
+    banho: d.querySelector('.c_banho').value.trim()
+  }));
+  const consulentes_frente = Array.from(document.querySelectorAll('.linhaFrente')).map(d => ({
+    nome: d.querySelector('.f_nome').value.trim(),
+    entidade: d.querySelector('.f_entidade').value.trim()
+  }));
+  return {
+    funcoes: funcoesMarcadas(),
+    pessoas_cambone, consulentes_frente,
+    descricao: document.getElementById('relatoDescricao').value.trim(),
+    feedback: document.getElementById('relatoFeedback').value.trim()
+  };
+}
+
+async function salvarRascunho() {
+  const dados = coletarDados();
+  await db.from('relatos_gira').upsert({
+    gira_id: giraAtual.id, aluno_id: eu.id, dados, enviado: false
+  }, { onConflict: 'gira_id,aluno_id' });
+  aviso2('Rascunho guardado. Você pode continuar depois.');
+}
+
+async function enviarRelato() {
+  const dados = coletarDados();
+  if (!dados.funcoes.length) return aviso2('Escolha ao menos uma função.', true);
+  if (!confirm('Depois de enviar você não poderá mais editar. Deseja enviar?')) return;
+  await db.from('relatos_gira').upsert({
+    gira_id: giraAtual.id, aluno_id: eu.id, dados, enviado: true, enviado_em: new Date().toISOString()
+  }, { onConflict: 'gira_id,aluno_id' });
+  document.getElementById('veuRelato').classList.remove('aberto');
+  carregarGiras();
+}
+
+function bloquearSeVer() {
+  const inputs = document.querySelectorAll('#veuRelato input, #veuRelato textarea, #veuRelato button.addbtn');
+  document.getElementById('relatoAcoes').style.display = somenteVer ? 'none' : 'block';
+  document.getElementById('relatoAddCambone').style.display = somenteVer ? 'none' : 'inline-block';
+  document.getElementById('relatoAddFrente').style.display = somenteVer ? 'none' : 'inline-block';
+  inputs.forEach(el => { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.disabled = somenteVer; });
+}
+
+function aviso2(msg, erro) {
+  const el = document.getElementById('avisoRelato');
+  el.className = 'aviso ' + (erro ? 'erro' : 'ok'); el.textContent = msg;
+  setTimeout(() => el.className = 'aviso', 3500);
 }
 </script>
 </body>
