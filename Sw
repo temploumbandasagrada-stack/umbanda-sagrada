@@ -1,0 +1,22 @@
+// Troque este número toda vez que subir uma nova versão.
+const VERSAO = 'casa-de-estudo-v3';
+
+self.addEventListener('install', e => self.skipWaiting());
+
+self.addEventListener('activate', e => {
+  e.waitUntil((async () => {
+    const chaves = await caches.keys();
+    await Promise.all(chaves.map(k => k !== VERSAO ? caches.delete(k) : null));
+    await self.clients.claim();
+  })());
+});
+
+// Recebe o pedido de "atualizar agora" vindo da página
+self.addEventListener('message', e => {
+  if (e.data === 'skip') self.skipWaiting();
+});
+
+// Sempre busca da rede (nunca serve versão velha do cache)
+self.addEventListener('fetch', e => {
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});
