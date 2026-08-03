@@ -254,6 +254,18 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 .menu-op:hover { border-color: var(--ouro); color: var(--ouro-claro); }
 .menu-op.perigo { border-color: rgba(196,106,106,.4); color: var(--perigo); }
 
+/* Calendário da agenda */
+.cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-cab { text-align: center; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ouro); padding: 4px 0; }
+.cal-dia { aspect-ratio: 1; border: 1px solid var(--linha); border-radius: 8px; padding: 4px; font-size: .78rem; position: relative; background: var(--altar); overflow: hidden; }
+.cal-dia.vazio { border-color: transparent; background: transparent; }
+.cal-dia.tem-evento { cursor: pointer; border-color: var(--ouro); }
+.cal-dia .num { color: var(--oxala-2); }
+.cal-dia.hoje { box-shadow: 0 0 0 1px var(--ouro) inset; }
+.cal-dia .ponto { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--ouro); }
+.cal-dia .qtd { position: absolute; top: 3px; right: 5px; font-size: .6rem; color: var(--ouro-claro); }
+@media (max-width: 640px) { .cal-dia { font-size: .7rem; padding: 2px; } .cal-cab { font-size: .58rem; } }
+
 /* Faixas de cursos (Netflix) */
 .faixa { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x mandatory; }
 .faixa::-webkit-scrollbar { height: 6px; }
@@ -312,6 +324,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
   <button class="aba" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
   <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+  <button class="aba" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
 </nav>
 
 <main class="conteudo">
@@ -342,6 +355,20 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Giras e relatos</h2>
     <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
     <div id="listaGiras"></div>
+  </section>
+
+  <!-- ==================== AGENDA ==================== -->
+  <section class="secao" id="sec-agenda">
+    <h2>Agenda</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px">
+      <select id="agMes" onchange="renderAgenda()" style="width:auto"></select>
+      <div style="display:flex; gap:4px">
+        <button class="btn btn-mini" id="agBtnCal" onclick="modoAgenda('calendario')">Calendário</button>
+        <button class="btn btn-mini btn-fantasma" id="agBtnLista" onclick="modoAgenda('lista')">Lista</button>
+      </div>
+    </div>
+    <div id="agConteudo"></div>
   </section>
 </main>
 
@@ -403,6 +430,16 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <button class="fab-item" onclick="mudarZoom(1)">A+ Aumentar</button>
     <button class="fab-item" onclick="mudarZoom(-1)">A− Diminuir</button>
     <button class="fab-item" onclick="fecharLeitor()">✕ Sair</button>
+  </div>
+</div>
+
+<!-- MODAL DIA DA AGENDA -->
+<div class="veu" id="veuDiaAgenda">
+  <div class="modal" style="max-width:520px">
+    <h3 id="agDiaTitulo" style="text-transform:capitalize"></h3>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div id="agDiaCorpo"></div>
+    <button class="btn btn-fantasma" onclick="fechar('veuDiaAgenda')">Fechar</button>
   </div>
 </div>
 
@@ -557,6 +594,7 @@ function irPara(secao) {
   document.getElementById('sec-' + secao).classList.add('ativa');
   document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
   if (secao === 'anotacoes') carregarAnotacoes();
+  if (secao === 'agenda') carregarAgenda();
 }
 function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
 
@@ -908,6 +946,104 @@ async function apagarNota(id) {
   if (!confirm('Apagar esta nota?')) return;
   await db.from('notas').delete().eq('id', id);
   carregarAnotacoes();
+}
+
+/* ==================== AGENDA / CALENDÁRIO ==================== */
+let eventosMeus = [], cienteSet = new Set(), agModo = 'calendario';
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+async function carregarAgenda() {
+  // eventos: para_todos OU destinados a mim
+  const { data: todos } = await db.from('eventos').select('*, eventos_destinatarios(aluno_id)').order('data');
+  eventosMeus = (todos || []).filter(e =>
+    e.para_todos || (e.eventos_destinatarios || []).some(d => d.aluno_id === eu.id)
+  );
+  const { data: c } = await db.from('eventos_ciente').select('evento_id').eq('aluno_id', eu.id);
+  cienteSet = new Set((c || []).map(x => x.evento_id));
+
+  // preenche o seletor de mês (só meses que têm evento, + mês atual)
+  const meses = new Set(eventosMeus.map(e => e.data.slice(0, 7)));
+  const agora = new Date(); const atual = agora.toISOString().slice(0, 7);
+  meses.add(atual);
+  const ordenados = Array.from(meses).sort();
+  const sel = document.getElementById('agMes');
+  sel.innerHTML = ordenados.map(m => {
+    const [ano, mes] = m.split('-');
+    return `<option value="${m}">${MESES[parseInt(mes)-1]} de ${ano}</option>`;
+  }).join('');
+  sel.value = ordenados.includes(atual) ? atual : ordenados[0];
+  renderAgenda();
+}
+
+function modoAgenda(m) {
+  agModo = m;
+  document.getElementById('agBtnCal').className = 'btn btn-mini' + (m === 'calendario' ? '' : ' btn-fantasma');
+  document.getElementById('agBtnLista').className = 'btn btn-mini' + (m === 'lista' ? '' : ' btn-fantasma');
+  renderAgenda();
+}
+
+function renderAgenda() {
+  const mesAno = document.getElementById('agMes').value;
+  if (!mesAno) { document.getElementById('agConteudo').innerHTML = '<p class="vazio">Sem eventos.</p>'; return; }
+  const doMes = eventosMeus.filter(e => e.data.slice(0, 7) === mesAno);
+  document.getElementById('agConteudo').innerHTML = agModo === 'lista' ? renderLista(doMes) : renderCalendario(mesAno, doMes);
+}
+
+function renderLista(eventos) {
+  if (!eventos.length) return '<p class="vazio">Nenhum evento neste mês.</p>';
+  return eventos.sort((a,b) => a.data.localeCompare(b.data)).map(e => cartaoEvento(e)).join('');
+}
+
+function renderCalendario(mesAno, eventos) {
+  const [ano, mes] = mesAno.split('-').map(Number);
+  const primeiroDia = new Date(ano, mes-1, 1).getDay(); // 0=dom
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const hoje = new Date().toISOString().slice(0,10);
+  const porDia = {};
+  eventos.forEach(e => { (porDia[e.data] = porDia[e.data] || []).push(e); });
+
+  const cab = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => `<div class="cal-cab">${d}</div>`).join('');
+  let celulas = '';
+  for (let i = 0; i < primeiroDia; i++) celulas += `<div class="cal-dia vazio"></div>`;
+  for (let d = 1; d <= diasNoMes; d++) {
+    const dataStr = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs = porDia[dataStr] || [];
+    const tem = evs.length > 0;
+    celulas += `
+      <div class="cal-dia ${tem ? 'tem-evento' : ''} ${dataStr === hoje ? 'hoje' : ''}"
+           ${tem ? `onclick='abrirDiaAgenda(${JSON.stringify(dataStr)})'` : ''}>
+        <span class="num">${d}</span>
+        ${tem ? `<span class="qtd">${evs.length}</span><span class="ponto"></span>` : ''}
+      </div>`;
+  }
+  return `<div class="cal-grade">${cab}${celulas}</div>
+    <p class="mudo" style="font-size:.78rem; margin-top:10px; text-align:center">Toque num dia marcado para ver os eventos.</p>`;
+}
+
+function abrirDiaAgenda(dataStr) {
+  const evs = eventosMeus.filter(e => e.data === dataStr);
+  document.getElementById('agDiaTitulo').textContent = new Date(dataStr + 'T12:00').toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+  document.getElementById('agDiaCorpo').innerHTML = evs.map(e => cartaoEvento(e)).join('');
+  document.getElementById('veuDiaAgenda').classList.add('aberto');
+}
+
+function cartaoEvento(e) {
+  const jaCiente = cienteSet.has(e.id);
+  return `
+    <div class="cartao">
+      <h3>${escapeHtml(e.titulo)} <span class="selo azul">${new Date(e.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      ${e.descricao ? `<p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(e.descricao)}</p>` : ''}
+      ${jaCiente
+        ? `<p class="selo verde" style="margin-top:10px">✔ Você deu ciente</p>`
+        : `<button class="btn btn-mini" onclick="darCiente('${e.id}')">Ciente</button>`}
+    </div>`;
+}
+
+async function darCiente(eventoId) {
+  await db.from('eventos_ciente').insert({ evento_id: eventoId, aluno_id: eu.id });
+  cienteSet.add(eventoId);
+  document.getElementById('veuDiaAgenda').classList.remove('aberto');
+  renderAgenda();
 }
 
 /* ==================== GIRAS ==================== */
