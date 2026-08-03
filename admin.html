@@ -222,6 +222,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <section class="secao ativa" id="sec-usuarios">
     <h2>Usuários e acessos</h2>
     <div class="firmeza"><span class="estrela">✦</span></div>
+    <div id="boxPedidosSenha"></div>
     <div class="cartao" style="overflow-x:auto">
       <table>
         <thead><tr><th>Nome</th><th>E-mail</th><th>Situação</th><th>Ações</th></tr></thead>
@@ -360,6 +361,20 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   </div>
 </div>
 
+<!-- MODAL EDITAR ALUNO -->
+<div class="veu" id="veuEditarAluno">
+  <div class="modal" style="max-width:460px">
+    <h3>Editar aluno</h3>
+    <input type="hidden" id="edAlunoId">
+    <label>Nome</label><input id="edAlunoNome">
+    <label>E-mail</label>
+    <p class="mudo" id="edAlunoEmail" style="font-size:.9rem"></p>
+    <p class="mudo" style="font-size:.8rem; margin-top:10px">Para trocar a senha deste aluno, use o botão "Redefinir no Supabase" na lista de pedidos de senha.</p>
+    <button class="btn" onclick="salvarEdicaoAluno()">Salvar</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuEditarAluno')">Cancelar</button>
+  </div>
+</div>
+
 <!-- MODAL LIBERAR CURSOS POR ALUNO -->
 <div class="veu" id="veuAcCursos">
   <div class="modal" style="max-width:520px">
@@ -464,13 +479,54 @@ async function carregarUsuarios() {
       <td>
         <button class="btn btn-mini ${u.ativo ? 'btn-perigo' : ''}" onclick="alternarAcesso('${u.id}', ${u.ativo})">${u.ativo ? 'Bloquear' : 'Liberar'}</button>
         ${u.role !== 'admin' ? `<button class="btn btn-mini" onclick="gerenciarCursos('${u.id}', '${escapeHtml(u.nome).replace(/'/g,"")}')">Cursos</button>` : ''}
+        <button class="btn btn-mini btn-fantasma" onclick='editarAluno(${JSON.stringify({id:u.id, nome:u.nome, email:u.email}).replace(/'/g,"&#39;")})'>Editar</button>
       </td>
     </tr>`;
   });
+  carregarPedidosSenha();
 }
 async function alternarAcesso(id, ativo) {
   await db.from('profiles').update({ ativo: !ativo }).eq('id', id);
   carregarUsuarios();
+}
+
+// Editar aluno (nome) + caminho para redefinir senha
+function editarAluno(u) {
+  document.getElementById('edAlunoId').value = u.id;
+  document.getElementById('edAlunoNome').value = u.nome || '';
+  document.getElementById('edAlunoEmail').textContent = u.email;
+  document.getElementById('veuEditarAluno').classList.add('aberto');
+}
+async function salvarEdicaoAluno() {
+  const id = document.getElementById('edAlunoId').value;
+  const nome = document.getElementById('edAlunoNome').value.trim();
+  if (!nome) return;
+  await db.from('profiles').update({ nome }).eq('id', id);
+  document.getElementById('veuEditarAluno').classList.remove('aberto');
+  carregarUsuarios();
+}
+
+// Pedidos de "esqueci a senha"
+async function carregarPedidosSenha() {
+  const { data } = await db.from('pedidos_senha').select('*').eq('atendido', false).order('criado_em', { ascending: false });
+  const box = document.getElementById('boxPedidosSenha');
+  if (!data || !data.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="cartao" style="border-color: rgba(196,106,106,.4)">
+      <h3>Pedidos de senha (${data.length})</h3>
+      <p class="mudo" style="font-size:.84rem; margin-bottom:8px">Estes alunos esqueceram a senha. Redefina no Supabase e marque como atendido.</p>
+      ${data.map(p => `
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 0; border-top:1px solid rgba(201,162,39,.08)">
+          <strong>${escapeHtml(p.email)}</strong>
+          <span class="mudo" style="font-size:.78rem">${new Date(p.criado_em).toLocaleString('pt-BR')}</span>
+          <a href="https://supabase.com/dashboard/project/jqepdfxtqdjtozbrlkrm/auth/users" target="_blank" class="btn btn-mini">Redefinir no Supabase</a>
+          <button class="btn btn-mini btn-fantasma" onclick="atenderPedido('${p.id}')">Marcar atendido</button>
+        </div>`).join('')}
+    </div>`;
+}
+async function atenderPedido(id) {
+  await db.from('pedidos_senha').update({ atendido: true }).eq('id', id);
+  carregarPedidosSenha();
 }
 
 // Libera cursos individualmente para um aluno
