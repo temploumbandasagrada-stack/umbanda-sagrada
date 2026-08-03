@@ -253,6 +253,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 }
 .menu-op:hover { border-color: var(--ouro); color: var(--ouro-claro); }
 .menu-op.perigo { border-color: rgba(196,106,106,.4); color: var(--perigo); }
+.menu-op.nav.ativa { border-color: var(--ouro); background: rgba(201,162,39,.1); color: var(--ouro-claro); }
 
 /* Calendário da agenda */
 .cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -308,24 +309,21 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="menu-btn" onclick="toggleMenuTopo()" id="menuBtn" title="Menu">+</button>
 </header>
 
-<!-- Menu do topo (espaçoso) -->
+<!-- Menu do topo (navegação + opções) -->
 <div class="menu-fundo" id="menuFundo" onclick="fecharMenuTopo()"></div>
 <div class="menu-painel" id="menuPainel">
   <p class="mudo" id="menuSaudacao" style="margin-bottom:6px"></p>
-  <button class="menu-op" onclick="alternarTema(); ">
+  <button class="menu-op nav" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
+  <button class="menu-op nav" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
+  <button class="menu-op nav" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
+  <button class="menu-op nav" data-secao="giras" onclick="irPara('giras')">Giras</button>
+  <button class="menu-op nav" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
+  <div style="height:1px; background:var(--linha); margin:4px 0"></div>
+  <button class="menu-op" onclick="alternarTema()">
     <span id="menuTemaTxt">Mudar para tema claro</span>
   </button>
-  <button class="menu-op" onclick="fecharMenuTopo()">Fechar menu</button>
   <button class="menu-op perigo" onclick="sair()">Sair da conta</button>
 </div>
-
-<nav class="abas">
-  <button class="aba ativa" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
-  <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
-  <button class="aba" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
-  <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
-  <button class="aba" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
-</nav>
 
 <main class="conteudo">
 
@@ -584,17 +582,21 @@ async function init() {
   if (eu.role === 'admin') { window.location.href = 'admin.html'; return; }
   if (!eu.ativo) { await sair(); return; }
   document.getElementById('saudacao').textContent = 'Axé, ' + eu.nome.split(' ')[0] + ' · Nível ' + eu.nivel;
+  const inicial = document.querySelector('.menu-op.nav[data-secao="cursos"]');
+  if (inicial) inicial.classList.add('ativa');
   await carregarProgresso();
   carregarCursos(); carregarBiblioteca(); carregarGiras();
 }
 
 function irPara(secao) {
   document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
-  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.querySelectorAll('.menu-op.nav').forEach(a => a.classList.remove('ativa'));
   document.getElementById('sec-' + secao).classList.add('ativa');
-  document.querySelector(`[data-secao="${secao}"]`).classList.add('ativa');
+  const item = document.querySelector(`.menu-op.nav[data-secao="${secao}"]`);
+  if (item) item.classList.add('ativa');
   if (secao === 'anotacoes') carregarAnotacoes();
   if (secao === 'agenda') carregarAgenda();
+  fecharMenuTopo();
 }
 function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
 
