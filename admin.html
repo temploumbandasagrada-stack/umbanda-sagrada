@@ -212,6 +212,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="aba" data-secao="provas" onclick="irPara('provas')">Provas</button>
   <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
   <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
+  <button class="aba" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
 </nav>
 
 <main class="conteudo">
@@ -284,6 +285,27 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <div class="aviso" id="avisoGira"></div>
     </div>
     <div id="listaGiras"></div>
+  </section>
+
+  <!-- ==================== AGENDA ==================== -->
+  <section class="secao" id="sec-agenda">
+    <h2>Agenda de eventos</h2>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <div class="cartao">
+      <h3>Novo evento</h3>
+      <label>Data</label><input type="date" id="evData">
+      <label>Título</label><input id="evTitulo" placeholder="Ex.: Festa de Cosme e Damião">
+      <label>Descrição</label><textarea id="evDesc"></textarea>
+      <label>Enviar para</label>
+      <select id="evParaTodos" onchange="trocarDestino()">
+        <option value="sim">Todos os alunos</option>
+        <option value="nao">Selecionar alunos</option>
+      </select>
+      <div id="evSelecao" style="display:none; margin-top:8px; max-height:220px; overflow:auto; border:1px solid var(--linha); border-radius:10px; padding:10px"></div>
+      <button class="btn" onclick="salvarEvento()">Criar evento</button>
+      <div class="aviso" id="avisoEv"></div>
+    </div>
+    <div id="listaEventosAdmin"></div>
   </section>
 </main>
 
@@ -408,7 +430,7 @@ async function init() {
   eu = await exigirLogin();
   if (!eu) return;
   if (eu.role !== 'admin') { window.location.href = 'aluno.html'; return; }
-  carregarUsuarios(); carregarCursos(); carregarModulosSelect(); carregarBiblioteca(); carregarGiras();
+  carregarUsuarios(); carregarCursos(); carregarModulosSelect(); carregarBiblioteca(); carregarGiras(); carregarEventosAdmin();
 }
 
 function irPara(secao) {
@@ -789,6 +811,64 @@ async function carregarGiras() {
     </div>`;
   }).join('') || '<p class="vazio">Nenhuma gira aberta.</p>';
 }
+
+/* ==================== AGENDA ==================== */
+function trocarDestino() {
+  const alguns = document.getElementById('evParaTodos').value === 'nao';
+  const box = document.getElementById('evSelecao');
+  box.style.display = alguns ? 'block' : 'none';
+  if (alguns) carregarAlunosSelecao();
+}
+async function carregarAlunosSelecao() {
+  const { data } = await db.from('profiles').select('id, nome').eq('role', 'aluno').eq('ativo', true).order('nome');
+  document.getElementById('evSelecao').innerHTML = (data || []).map(a => `
+    <label style="display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; color:var(--oxala); margin:6px 0; cursor:pointer">
+      <input type="checkbox" class="evAluno" value="${a.id}" style="width:auto"> ${escapeHtml(a.nome)}
+    </label>`).join('') || '<p class="mudo">Nenhum aluno ativo.</p>';
+}
+async function salvarEvento() {
+  const dados = {
+    data: document.getElementById('evData').value,
+    titulo: document.getElementById('evTitulo').value.trim(),
+    descricao: document.getElementById('evDesc').value.trim(),
+    para_todos: document.getElementById('evParaTodos').value === 'sim'
+  };
+  if (!dados.data || !dados.titulo) return aviso('avisoEv', 'erro', 'Informe data e título.');
+  const selecionados = Array.from(document.querySelectorAll('.evAluno:checked')).map(c => c.value);
+  if (!dados.para_todos && !selecionados.length) return aviso('avisoEv', 'erro', 'Selecione ao menos um aluno.');
+  try {
+    const { data: ev, error } = await db.from('eventos').insert(dados).select().single();
+    if (error) throw error;
+    if (!dados.para_todos) {
+      const linhas = selecionados.map(id => ({ evento_id: ev.id, aluno_id: id }));
+      await db.from('eventos_destinatarios').insert(linhas);
+    }
+    ['evData','evTitulo','evDesc'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('evParaTodos').value = 'sim'; trocarDestino();
+    aviso('avisoEv', 'ok', 'Evento criado e enviado.');
+    carregarEventosAdmin();
+  } catch (e) { aviso('avisoEv', 'erro', 'Erro: ' + e.message); }
+}
+async function apagarEvento(id) {
+  if (!confirm('Apagar este evento?')) return;
+  await db.from('eventos').delete().eq('id', id);
+  carregarEventosAdmin();
+}
+async function carregarEventosAdmin() {
+  const { data: eventos } = await db.from('eventos').select('*').order('data', { ascending: false });
+  const { data: cientes } = await db.from('eventos_ciente').select('evento_id, profiles(nome)');
+  const porEv = {};
+  (cientes || []).forEach(c => { (porEv[c.evento_id] = porEv[c.evento_id] || []).push(c.profiles?.nome || 'Aluno'); });
+  document.getElementById('listaEventosAdmin').innerHTML = (eventos || []).map(e => `
+    <div class="cartao">
+      <h3>${escapeHtml(e.titulo)} <span class="selo azul">${new Date(e.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <span class="selo" style="font-size:.62rem">${e.para_todos ? 'Todos' : 'Selecionados'}</span>
+      ${e.descricao ? `<p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(e.descricao)}</p>` : ''}
+      <p class="mudo" style="margin-top:10px; font-size:.85rem">Ciente: ${(porEv[e.id] || []).length} aluno(s)${(porEv[e.id]||[]).length ? ' — ' + (porEv[e.id]).map(escapeHtml).join(', ') : ''}</p>
+      <button class="btn btn-mini btn-perigo" onclick="apagarEvento('${e.id}')">Apagar</button>
+    </div>`).join('') || '<p class="vazio">Nenhum evento criado ainda.</p>';
+}
+
 
 function verRelato(r, g) {
   const d = r.dados || {};
