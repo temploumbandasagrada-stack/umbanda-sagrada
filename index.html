@@ -205,6 +205,18 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <button class="btn" style="width:100%" onclick="entrar()">Entrar na casa</button>
       <div class="aviso" id="avisoLogin"></div>
       <p class="troca">Ainda não faz parte? <a onclick="mostrar('cadastro')">Solicitar acesso</a></p>
+      <p class="troca"><a onclick="mostrar('senha')">Esqueci minha senha</a></p>
+    </div>
+
+    <!-- ESQUECI A SENHA -->
+    <div class="cartao" id="cxSenha" style="display:none">
+      <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+      <p class="mudo" style="font-size:.9rem; margin-bottom:6px">Digite seu e-mail. A direção da casa vai redefinir seu acesso.</p>
+      <label for="senhaEmail">E-mail</label>
+      <input id="senhaEmail" type="email" autocomplete="email">
+      <button class="btn" style="width:100%" onclick="pedirSenha()">Enviar pedido</button>
+      <div class="aviso" id="avisoSenha"></div>
+      <p class="troca">Lembrou? <a onclick="mostrar('login')">Entrar</a></p>
     </div>
 
     <!-- CADASTRO -->
@@ -273,6 +285,15 @@ function escapeHtml(t) {
 function mostrar(qual) {
   document.getElementById('cxLogin').style.display = qual === 'login' ? 'block' : 'none';
   document.getElementById('cxCadastro').style.display = qual === 'cadastro' ? 'block' : 'none';
+  document.getElementById('cxSenha').style.display = qual === 'senha' ? 'block' : 'none';
+}
+
+async function pedirSenha() {
+  const email = document.getElementById('senhaEmail').value.trim();
+  if (!email) return aviso('avisoSenha', 'erro', 'Digite seu e-mail.');
+  const { error } = await db.from('pedidos_senha').insert({ email });
+  if (error) return aviso('avisoSenha', 'erro', 'Não foi possível enviar. Tente novamente.');
+  aviso('avisoSenha', 'ok', 'Pedido enviado! A direção da casa vai redefinir seu acesso em breve.');
 }
 function aviso(id, tipo, msg) {
   const el = document.getElementById(id);
