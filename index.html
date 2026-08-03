@@ -313,7 +313,45 @@ document.getElementById('loginSenha').addEventListener('keydown', e => { if (e.k
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // detecta nova versao instalando
+      reg.addEventListener('updatefound', () => {
+        const novo = reg.installing;
+        novo && novo.addEventListener('statechange', () => {
+          if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+            mostrarAvisoAtualizacao();
+          }
+        });
+      });
+      // procura atualizacao ao abrir
+      reg.update();
+    }).catch(()=>{});
+    // quando o novo SW assume, recarrega uma vez
+    let recarregou = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (recarregou) return; recarregou = true; window.location.reload();
+    });
+  });
+
+  function mostrarAvisoAtualizacao() {
+    if (document.getElementById('avisoUpd')) return;
+    const b = document.createElement('div');
+    b.id = 'avisoUpd';
+    b.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;background:linear-gradient(160deg,#C9A227,#A8861D);color:#1a1408;padding:12px 18px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:sans-serif;font-size:.9rem;display:flex;gap:12px;align-items:center;';
+    b.innerHTML = '<span>Nova versão disponível</span>';
+    const btn = document.createElement('button');
+    btn.textContent = 'Atualizar';
+    btn.style.cssText = 'background:#1a1408;color:#E8CE7A;border:none;border-radius:999px;padding:7px 16px;font-weight:600;cursor:pointer;';
+    btn.onclick = () => {
+      navigator.serviceWorker.getRegistration().then(r => {
+        if (r && r.waiting) r.waiting.postMessage('skip');
+        else window.location.reload();
+      });
+    };
+    b.appendChild(btn);
+    document.body.appendChild(b);
+  }
 }
 </script>
 </body>
