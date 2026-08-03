@@ -185,27 +185,58 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 
 /* Leitor em tela cheia */
 .leitor-cheio {
-  position: fixed; inset: 0; z-index: 200; background: var(--noite);
-  display: none; flex-direction: column;
+  position: fixed; inset: 0; z-index: 200; background: #f4f1ea;
+  display: none;
 }
-.leitor-cheio.aberto { display: flex; }
-.leitor-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 16px 4px; }
-.leitor-topo h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.leitor-topo .mudo { font-size: .75rem; white-space: nowrap; }
-.leitor-barra { height: 5px; background: var(--noite-2); margin: 6px 16px 0; border-radius: 99px; overflow: hidden; }
-.leitor-barra > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ouro), var(--ouro-claro)); transition: width .3s; }
-.leitor-area { flex: 1; overflow: auto; display: block; text-align: center; padding: 0; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; }
+.leitor-cheio.aberto { display: block; }
+.leitor-area {
+  position: absolute; inset: 0; overflow: auto;
+  display: block; text-align: center;
+  -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom;
+  background: #f4f1ea;
+}
 .leitor-area canvas { width: 100%; max-width: 100%; height: auto; display: block; margin: 0 auto; background: #fff; }
-.leitor-nav { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 16px calc(10px + env(safe-area-inset-bottom)); }
+
+/* controles sobrepostos, semitransparentes até tocar 2x */
+.leitor-ctrl {
+  position: absolute; inset: 0; z-index: 205; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: space-between;
+  opacity: .22; transition: opacity .3s;
+}
+.leitor-ctrl.forte { opacity: 1; }
+.leitor-ctrl .leitor-topo,
+.leitor-ctrl .leitor-nav { pointer-events: auto; }
+.leitor-topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  background: linear-gradient(180deg, rgba(13,19,33,.85), transparent);
+  color: var(--oxala-claro, #F4EFE3);
+}
+.leitor-topo h3 { margin: 0; font-size: .95rem; color: #F4EFE3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leitor-topo .mudo { font-size: .72rem; white-space: nowrap; color: #E8CE7A; }
+.leitor-barra { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: rgba(0,0,0,.15); }
+.leitor-barra > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ouro), var(--ouro-claro)); transition: width .3s; }
+.leitor-nav {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(13,19,33,.85), transparent);
+}
+.leitor-nav .mudo { color: #E8CE7A; font-size: .85rem; }
+.nav-seta {
+  width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(232,206,122,.5);
+  background: rgba(13,19,33,.5); color: #E8CE7A; font-size: 1.6rem; line-height: 1; cursor: pointer;
+}
 
 /* Bolinha flutuante + */
 .fab {
-  position: fixed; right: 18px; bottom: calc(76px + env(safe-area-inset-bottom));
-  width: 58px; height: 58px; border-radius: 50%; border: none;
+  position: fixed; right: 18px; bottom: calc(90px + env(safe-area-inset-bottom));
+  width: 54px; height: 54px; border-radius: 50%; border: none;
   background: linear-gradient(160deg, var(--ouro), #A8861D); color: #1a1408;
-  font-size: 1.9rem; line-height: 1; cursor: pointer; z-index: 240;
-  box-shadow: 0 8px 24px rgba(0,0,0,.5); transition: transform .25s;
+  font-size: 1.8rem; line-height: 1; cursor: pointer; z-index: 240;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5); transition: transform .25s, opacity .3s;
+  opacity: .38;
 }
+.fab:active, .fab.girado { opacity: 1; }
 .fab.girado { transform: rotate(45deg); }
 /* fundo escuro atrás do menu, para o menu aparecer POR CIMA da página */
 .fab-fundo {
@@ -404,20 +435,23 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 
 <!-- MODAL LEITOR DE LIVRO (TELA CHEIA) -->
 <div id="veuLeitor" class="leitor-cheio">
-  <div class="leitor-topo">
-    <h3 id="leitorTitulo"></h3>
-    <span class="mudo" id="leitorStatus"></span>
-  </div>
-  <div class="leitor-barra"><div id="leitorBarra"></div></div>
-
-  <div class="leitor-area" id="leitorArea">
+  <!-- página ocupa toda a tela -->
+  <div class="leitor-area" id="leitorArea" ondblclick="revelarControles()">
     <canvas id="leitorCanvas"></canvas>
   </div>
 
-  <div class="leitor-nav">
-    <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="paginaAnterior()">‹ Anterior</button>
-    <span class="mudo" id="leitorPagina"></span>
-    <button class="btn btn-fantasma btn-mini" style="margin:0" onclick="proximaPagina()">Próxima ›</button>
+  <!-- controles sobrepostos, semitransparentes -->
+  <div class="leitor-ctrl" id="leitorCtrl">
+    <div class="leitor-topo">
+      <h3 id="leitorTitulo"></h3>
+      <span class="mudo" id="leitorStatus"></span>
+    </div>
+    <div class="leitor-barra"><div id="leitorBarra"></div></div>
+    <div class="leitor-nav">
+      <button class="nav-seta" onclick="paginaAnterior()">‹</button>
+      <span class="mudo" id="leitorPagina"></span>
+      <button class="nav-seta" onclick="proximaPagina()">›</button>
+    </div>
   </div>
 
   <!-- Bolinha flutuante + -->
@@ -854,6 +888,18 @@ async function renderizarPagina() {
 }
 
 // Bolinha flutuante +
+let timerControles = null;
+function revelarControles() {
+  const ctrl = document.getElementById('leitorCtrl');
+  ctrl.classList.add('forte');
+  document.getElementById('fab').style.opacity = '1';
+  clearTimeout(timerControles);
+  timerControles = setTimeout(() => {
+    ctrl.classList.remove('forte');
+    document.getElementById('fab').style.opacity = '';
+  }, 3500);
+}
+
 function toggleFab() {
   const aberto = document.getElementById('fabMenu').classList.toggle('aberto');
   document.getElementById('fabFundo').classList.toggle('aberto', aberto);
