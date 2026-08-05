@@ -1,0 +1,62 @@
+COLE ESTE BLOCO INTEIRO NO FINAL DO index.html, aluno.html E admin.html
+(logo antes da linha </body>)
+
+Ele faz duas coisas:
+1. Toda vez que a pessoa abre o app, ele confere sozinho se tem versão nova.
+2. Coloca um botão "Atualizar" que força a busca na hora.
+
+-------- COPIE DAQUI PRA BAIXO --------
+
+<!-- ATUALIZAÇÃO AUTOMÁTICA -->
+<style>
+#btnAtualizar{
+  position:fixed; right:14px; bottom:14px; z-index:9999;
+  background:rgba(212,175,55,.12); border:1px solid #d4af37; color:#f0d98a;
+  border-radius:24px; padding:9px 16px; font-family:'Jost',sans-serif;
+  font-size:13px; cursor:pointer; backdrop-filter:blur(6px);
+}
+#btnAtualizar.novo{ background:#d4af37; color:#1a1206; font-weight:600; }
+</style>
+<button id="btnAtualizar" onclick="atualizarApp()">Atualizar</button>
+<script>
+let temVersaoNova = false;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.update();
+    setInterval(() => reg.update(), 60000);
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      novo && novo.addEventListener('statechange', () => {
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+          temVersaoNova = true;
+          const b = document.getElementById('btnAtualizar');
+          b.classList.add('novo');
+          b.textContent = 'Nova versão — tocar aqui';
+        }
+      });
+    });
+  });
+  let recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (recarregou) return;
+    recarregou = true;
+    location.reload();
+  });
+}
+
+async function atualizarApp(){
+  const b = document.getElementById('btnAtualizar');
+  b.textContent = 'Atualizando…';
+  try {
+    const nomes = await caches.keys();
+    await Promise.all(nomes.map(n => caches.delete(n)));
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) { await reg.update(); reg.waiting && reg.waiting.postMessage('ATUALIZAR_AGORA'); }
+  } catch(e) {}
+  location.reload(true);
+}
+</script>
+<!-- FIM DA ATUALIZAÇÃO AUTOMÁTICA -->
+
+-------- COPIE ATÉ AQUI --------
