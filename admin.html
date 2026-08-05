@@ -203,6 +203,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   </div>
   <div style="display:flex; gap:8px">
     <button class="btn btn-fantasma btn-mini" onclick="alternarTema()" id="btnTema" title="Alternar tema">🌙</button>
+    <button class="btn btn-fantasma btn-mini" onclick="atualizarApp()" title="Buscar versao nova">Atualizar</button>
     <button class="btn btn-fantasma btn-mini" onclick="sair()">Sair</button>
   </div>
 </header>
@@ -214,6 +215,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
   <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
   <button class="aba" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
+  <button class="aba" onclick="location.href='entidades.html'">Entidades</button>
 </nav>
 
 <main class="conteudo">
@@ -1010,6 +1012,21 @@ if ('serviceWorker' in navigator) {
     b.appendChild(btn);
     document.body.appendChild(b);
   }
+}
+</script>
+
+<script>
+// ===== ATUALIZAR APLICATIVO (forca buscar a versao nova) =====
+async function atualizarApp(){
+  try{
+    const nomes = await caches.keys();
+    await Promise.all(nomes.map(n => caches.delete(n)));
+  }catch(e){}
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(reg){ await reg.update(); if(reg.waiting) reg.waiting.postMessage('skip'); }
+  }catch(e){}
+  location.href = location.pathname + '?v=' + Date.now();
 }
 </script>
 </body>
