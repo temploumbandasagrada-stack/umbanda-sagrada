@@ -233,6 +233,9 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <p class="troca">Já tem acesso? <a onclick="mostrar('login')">Entrar</a></p>
     </div>
   </main>
+  <div style="text-align:center; padding:0 0 22px">
+    <button onclick="atualizarApp()" style="background:none;border:none;color:rgba(232,206,122,.55);font-family:'Jost',sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer">Atualizar aplicativo</button>
+  </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -374,6 +377,21 @@ if ('serviceWorker' in navigator) {
     b.appendChild(btn);
     document.body.appendChild(b);
   }
+}
+</script>
+
+<script>
+// ===== ATUALIZAR APLICATIVO (forca buscar a versao nova) =====
+async function atualizarApp(){
+  try{
+    const nomes = await caches.keys();
+    await Promise.all(nomes.map(n => caches.delete(n)));
+  }catch(e){}
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(reg){ await reg.update(); if(reg.waiting) reg.waiting.postMessage('skip'); }
+  }catch(e){}
+  location.href = location.pathname + '?v=' + Date.now();
 }
 </script>
 </body>
