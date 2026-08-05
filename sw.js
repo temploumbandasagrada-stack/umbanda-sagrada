@@ -5,7 +5,7 @@
 //
 // >>> Toda vez que subir arquivo novo, troque o número aqui embaixo <<<
 // ============================================================
-const VERSAO = 'casa-de-estudo-v5';
+const VERSAO = 'casa-de-estudo-v6';
 
 const ESSENCIAIS = [
   './',
@@ -54,5 +54,5 @@ self.addEventListener('fetch', e => {
 
 // Permite que a página mande atualizar na hora
 self.addEventListener('message', e => {
-  if (e.data === 'ATUALIZAR_AGORA') self.skipWaiting();
+  if (e.data === 'skip' || e.data === 'ATUALIZAR_AGORA') self.skipWaiting();
 });
