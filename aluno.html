@@ -350,10 +350,12 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="menu-op nav" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
   <button class="menu-op nav" data-secao="giras" onclick="irPara('giras')">Giras</button>
   <button class="menu-op nav" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
+  <button class="menu-op nav" onclick="location.href='entidades.html'">Minhas Entidades</button>
   <div style="height:1px; background:var(--linha); margin:4px 0"></div>
   <button class="menu-op" onclick="alternarTema()">
     <span id="menuTemaTxt">Mudar para tema claro</span>
   </button>
+  <button class="menu-op" onclick="atualizarApp()">Atualizar aplicativo</button>
   <button class="menu-op perigo" onclick="sair()">Sair da conta</button>
 </div>
 
@@ -1274,6 +1276,21 @@ if ('serviceWorker' in navigator) {
     b.appendChild(btn);
     document.body.appendChild(b);
   }
+}
+</script>
+
+<script>
+// ===== ATUALIZAR APLICATIVO (forca buscar a versao nova) =====
+async function atualizarApp(){
+  try{
+    const nomes = await caches.keys();
+    await Promise.all(nomes.map(n => caches.delete(n)));
+  }catch(e){}
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(reg){ await reg.update(); if(reg.waiting) reg.waiting.postMessage('skip'); }
+  }catch(e){}
+  location.href = location.pathname + '?v=' + Date.now();
 }
 </script>
 </body>
