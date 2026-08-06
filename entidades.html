@@ -3,400 +3,406 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Minhas Entidades — Casa de Estudo</title>
+<title>Entidades — Casa de Estudo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --noite:#0a1020; --noite2:#111a2e; --card:#16213a; --borda:#243350;
-  --ouro:#d4af37; --ouro-claro:#f0d98a; --branco:#f5f2ea; --suave:#9fb0cc;
-  --vermelho:#8b2f3a;
+  --noite:#0D1321; --noite2:#111A2E; --card:#16203A; --borda:#243350;
+  --ouro:#C9A227; --ouro-claro:#E8CE7A; --branco:#F5F2EA; --suave:#9FB0CC;
+  --perigo:#C46A6A;
 }
-body.pergaminho{
-  --noite:#efe6d2; --noite2:#e6dbc2; --card:#f7f1e2; --borda:#d4c5a1;
-  --ouro:#8a6a17; --ouro-claro:#6b520f; --branco:#2b2416; --suave:#6d6045;
+body.claro{
+  --noite:#EFE6D2; --noite2:#E6DBC2; --card:#F7F1E2; --borda:#D4C5A1;
+  --ouro:#8A6A17; --ouro-claro:#6B520F; --branco:#2B2416; --suave:#6D6045;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{
-  background:var(--noite); color:var(--branco);
-  font-family:'Jost',sans-serif; font-weight:300;
-  min-height:100vh; padding-bottom:60px;
-  transition:background .3s,color .3s;
-}
-header{
-  background:linear-gradient(180deg,var(--noite2),var(--noite));
-  border-bottom:1px solid var(--borda);
-  padding:22px 18px 18px; text-align:center; position:relative;
-}
-header h1{
-  font-family:'Cormorant Garamond',serif; font-weight:600;
-  font-size:30px; color:var(--ouro-claro); letter-spacing:.5px;
-}
+body{background:var(--noite);color:var(--branco);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh;padding-bottom:70px}
+header{background:linear-gradient(180deg,var(--noite2),var(--noite));border-bottom:1px solid var(--borda);padding:22px 18px 18px;text-align:center;position:relative}
+header h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;color:var(--ouro-claro)}
 header p{font-size:13px;color:var(--suave);margin-top:4px}
-.topo-btns{position:absolute;top:14px;right:14px;display:flex;gap:8px}
-.topo-btns button{
-  background:transparent;border:1px solid var(--borda);color:var(--suave);
-  border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;
-}
-.voltar{position:absolute;top:14px;left:14px}
-.voltar a{color:var(--suave);text-decoration:none;font-size:13px;border:1px solid var(--borda);border-radius:8px;padding:6px 10px;display:inline-block}
-
+.canto{position:absolute;top:14px;display:flex;gap:8px}
+.canto.esq{left:14px} .canto.dir{right:14px}
+.canto a,.canto button{color:var(--suave);text-decoration:none;font-size:12px;border:1px solid var(--borda);border-radius:8px;padding:6px 10px;background:transparent;cursor:pointer;font-family:'Jost',sans-serif}
 .wrap{max-width:820px;margin:0 auto;padding:18px 14px}
-
-.painel-admin{
-  background:var(--card);border:1px solid var(--borda);border-radius:12px;
-  padding:12px 14px;margin-bottom:18px;display:none;
-}
-.painel-admin label{font-size:12px;color:var(--suave);display:block;margin-bottom:6px}
-select,input,textarea{
-  width:100%;background:var(--noite2);border:1px solid var(--borda);
-  color:var(--branco);border-radius:8px;padding:10px 12px;
-  font-family:'Jost',sans-serif;font-size:15px;
-}
+select,input,textarea{width:100%;background:var(--noite2);border:1px solid var(--borda);color:var(--branco);border-radius:8px;padding:10px 12px;font-family:'Jost',sans-serif;font-size:15px}
 textarea{resize:vertical;min-height:60px}
 input::placeholder,textarea::placeholder{color:var(--suave);opacity:.7}
-
-.linha{
-  background:var(--card); border:1px solid var(--borda);
-  border-left:3px solid var(--ouro);
-  border-radius:12px; margin-bottom:14px; overflow:hidden;
-}
-.linha.esquerda{border-left-color:var(--vermelho)}
-.linha-topo{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px;cursor:pointer;gap:10px;
-}
+label{font-size:12px;color:var(--suave);display:block;margin-bottom:5px}
+.painel{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:16px;display:none}
+.painel.on{display:block}
+.painel h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--ouro-claro);margin-bottom:10px}
+.linha{background:var(--card);border:1px solid var(--borda);border-left:3px solid var(--ouro);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.linha.esq{border-left-color:var(--perigo)}
+.linha-topo{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;gap:10px}
 .linha-nome{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ouro-claro);line-height:1.1}
 .linha-sub{font-size:11px;color:var(--suave);letter-spacing:1.2px;text-transform:uppercase;margin-top:2px}
-.contador{
-  font-size:12px;color:var(--suave);border:1px solid var(--borda);
-  border-radius:20px;padding:3px 10px;white-space:nowrap;
-}
+.contador{font-size:12px;color:var(--suave);border:1px solid var(--borda);border-radius:20px;padding:3px 10px;white-space:nowrap}
 .linha-corpo{display:none;padding:0 16px 16px}
 .linha.aberta .linha-corpo{display:block}
-
-.entidade{
-  background:var(--noite2);border:1px solid var(--borda);border-radius:10px;
-  padding:12px 14px;margin-bottom:10px;
-}
-.entidade h4{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--branco)}
+.entidade{background:var(--noite2);border:1px solid var(--borda);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.entidade h4{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600}
 .entidade .meta{font-size:12px;color:var(--suave);margin-top:2px}
-.entidade .obs{font-size:14px;color:var(--branco);opacity:.85;margin-top:8px;white-space:pre-wrap;line-height:1.5}
-.entidade .acoes{display:flex;gap:14px;margin-top:10px}
-.entidade .acoes button{background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;text-decoration:underline}
-
+.entidade .obs{font-size:14px;opacity:.85;margin-top:8px;white-space:pre-wrap;line-height:1.5}
+.acoes{display:flex;gap:14px;margin-top:10px}
+.acoes button{background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;text-decoration:underline}
 .vazio{font-size:14px;color:var(--suave);font-style:italic;padding:6px 0 12px}
-
-.btn-add{
-  width:100%;background:transparent;border:1px dashed var(--ouro);
-  color:var(--ouro-claro);border-radius:10px;padding:11px;
-  font-family:'Jost',sans-serif;font-size:14px;cursor:pointer;
-}
-.btn-add:hover{background:rgba(212,175,55,.08)}
-
+.btn-add{width:100%;background:transparent;border:1px dashed var(--ouro);color:var(--ouro-claro);border-radius:10px;padding:11px;font-family:'Jost',sans-serif;font-size:14px;cursor:pointer}
 .form-ent{display:none;margin-top:10px}
-.form-ent.ativo{display:block}
-.form-ent .campo{margin-bottom:10px}
-.form-ent label{font-size:12px;color:var(--suave);display:block;margin-bottom:5px}
-.form-ent .linha2{display:flex;gap:10px}
-.form-ent .linha2>div{flex:1}
-.btns{display:flex;gap:10px;margin-top:4px}
-.btn-ouro{
-  background:var(--ouro);color:#1a1206;border:none;border-radius:8px;
-  padding:11px 18px;font-family:'Jost',sans-serif;font-weight:500;font-size:14px;cursor:pointer;
-}
-.btn-vazio{
-  background:transparent;color:var(--suave);border:1px solid var(--borda);
-  border-radius:8px;padding:11px 18px;font-family:'Jost',sans-serif;font-size:14px;cursor:pointer;
-}
-
-#aviso{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:24px;
-  background:var(--card);border:1px solid var(--ouro);color:var(--branco);
-  padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:50;
-}
+.form-ent.on{display:block}
+.campo{margin-bottom:10px}
+.duplo{display:flex;gap:10px}
+.duplo>div{flex:1}
+.btns{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
+.btn-ouro{background:var(--ouro);color:#1a1206;border:none;border-radius:8px;padding:11px 18px;font-family:'Jost',sans-serif;font-weight:500;font-size:14px;cursor:pointer}
+.btn-vazio{background:transparent;color:var(--suave);border:1px solid var(--borda);border-radius:8px;padding:11px 18px;font-family:'Jost',sans-serif;font-size:14px;cursor:pointer}
+.item-linha{display:flex;align-items:center;gap:8px;background:var(--noite2);border:1px solid var(--borda);border-radius:9px;padding:9px 11px;margin-bottom:8px}
+.item-linha .txt{flex:1;min-width:0}
+.item-linha .txt b{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600}
+.item-linha .txt small{display:block;color:var(--suave);font-size:11px}
+.mini{background:transparent;border:1px solid var(--borda);color:var(--suave);border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;font-family:'Jost',sans-serif}
+.mini.perigo{color:var(--perigo);border-color:rgba(196,106,106,.4)}
+#aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--card);border:1px solid var(--ouro);padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:60}
 .carregando{text-align:center;color:var(--suave);padding:40px 0;font-style:italic}
-@media(max-width:480px){
-  .form-ent .linha2{flex-direction:column;gap:0}
-  header h1{font-size:25px}
-}
+@media(max-width:480px){.duplo{flex-direction:column;gap:0}header h1{font-size:25px}}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="voltar"><a href="aluno.html">← Voltar</a></div>
-  <div class="topo-btns"><button onclick="trocarTema()" id="btnTema">☾</button></div>
-  <h1>Minhas Entidades</h1>
+  <div class="canto esq"><a href="#" id="linkVoltar">← Voltar</a></div>
+  <div class="canto dir">
+    <button onclick="atualizarApp()">Atualizar</button>
+    <button onclick="trocarTema()" id="btnTema">☾</button>
+  </div>
+  <h1>Entidades</h1>
   <p id="subtitulo">Carregando…</p>
 </header>
 
 <div class="wrap">
-  <div class="painel-admin" id="painelAdmin">
-    <label>Ver as entidades de:</label>
-    <select id="seletorMedium" onchange="trocarMedium()"></select>
+
+  <div class="painel" id="painelAdmin">
+    <h3>Direção</h3>
+    <div class="campo">
+      <label>Ver o caderno de:</label>
+      <select id="seletorMedium" onchange="trocarMedium()"></select>
+    </div>
+    <div class="btns">
+      <button class="btn-vazio" onclick="abrirLinhas()">Gerenciar linhas</button>
+    </div>
   </div>
+
+  <div class="painel" id="painelLinhas">
+    <h3>Linhas da casa</h3>
+    <div id="listaLinhas"></div>
+    <div style="height:1px;background:var(--borda);margin:14px 0"></div>
+    <input type="hidden" id="linhaId">
+    <div class="duplo">
+      <div class="campo">
+        <label>Nome da linha</label>
+        <input id="linhaNome" placeholder="Ex: Oxalá">
+      </div>
+      <div class="campo">
+        <label>Descrição curta</label>
+        <input id="linhaSub" placeholder="Ex: Linha da Fé">
+      </div>
+    </div>
+    <div class="campo">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="linhaEsq" style="width:auto">
+        <span>É linha de esquerda (fica marcada em vermelho)</span>
+      </label>
+    </div>
+    <div class="btns">
+      <button class="btn-ouro" onclick="salvarLinha()" id="btnSalvarLinha">Adicionar linha</button>
+      <button class="btn-vazio" onclick="limparFormLinha()">Limpar</button>
+      <button class="btn-vazio" onclick="fecharLinhas()">Fechar</button>
+    </div>
+  </div>
+
   <div id="conteudo"><div class="carregando">Abrindo o caderno…</div></div>
 </div>
 
 <div id="aviso"></div>
 
-<!-- ATUALIZAÇÃO AUTOMÁTICA -->
-<style>
-#btnAtualizar{
-  position:fixed; right:14px; bottom:14px; z-index:9999;
-  background:rgba(212,175,55,.12); border:1px solid var(--ouro); color:var(--ouro-claro);
-  border-radius:24px; padding:9px 16px; font-family:'Jost',sans-serif;
-  font-size:13px; cursor:pointer; backdrop-filter:blur(6px);
-}
-#btnAtualizar.novo{ background:var(--ouro); color:#1a1206; font-weight:600; }
-</style>
-<button id="btnAtualizar" onclick="atualizarApp()">Atualizar</button>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(reg => {
-    reg.update();
-    setInterval(() => reg.update(), 60000);
-    reg.addEventListener('updatefound', () => {
-      const novo = reg.installing;
-      novo && novo.addEventListener('statechange', () => {
-        if (novo.state === 'installed' && navigator.serviceWorker.controller) {
-          const b = document.getElementById('btnAtualizar');
-          b.classList.add('novo');
-          b.textContent = 'Nova versão — tocar aqui';
-        }
-      });
-    });
-  });
-  let recarregou = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (recarregou) return; recarregou = true; location.reload();
-  });
-}
-async function atualizarApp(){
-  const b = document.getElementById('btnAtualizar');
-  b.textContent = 'Atualizando…';
-  try {
-    const nomes = await caches.keys();
-    await Promise.all(nomes.map(n => caches.delete(n)));
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (reg) { await reg.update(); reg.waiting && reg.waiting.postMessage('ATUALIZAR_AGORA'); }
-  } catch(e) {}
-  location.reload(true);
-}
-</script>
-
-<script>
-// ===============================================
-// CONFIGURAÇÃO
-// ===============================================
+// ================= CONFIGURAÇÃO =================
 const SUPABASE_URL = "https://jqepdfxtqdjtozbrlkrm.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXBkZnh0cWRqdG96YnJsa3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTM4NjUsImV4cCI6MjEwMTE4OTg2NX0.9B_GAcACUsRBAe1GY7MUzmk1prquDsA6YsKp3f3v4Z0";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===============================================
-// AS LINHAS DA CASA
-// Se a sua casa usa outros nomes, é só editar aqui embaixo.
-// ===============================================
-const LINHAS = [
-  { nome:"Oxalá",     sub:"Linha da Fé" },
-  { nome:"Yemanjá",   sub:"Linha da Geração" },
-  { nome:"Oxum",      sub:"Linha do Amor" },
-  { nome:"Oxóssi",    sub:"Linha do Conhecimento" },
-  { nome:"Xangô",     sub:"Linha da Justiça" },
-  { nome:"Ogum",      sub:"Linha da Lei" },
-  { nome:"Obaluaiê",  sub:"Linha da Evolução" },
-  { nome:"Esquerda",  sub:"Exus e Pombagiras", esquerda:true }
-];
+let perfil=null, usuarioAlvo=null, souAdmin=false, linhas=[], dados=[];
 
-let perfil = null, usuarioAlvo = null, souAdmin = false, dados = [];
-
-// ===============================================
-// TEMA
-// ===============================================
+// ================= TEMA E ATUALIZAÇÃO =================
 function aplicarTema(){
-  const t = localStorage.getItem("tema");
-  document.body.classList.toggle("pergaminho", t === "claro" || t === "pergaminho");
-  document.getElementById("btnTema").textContent = document.body.classList.contains("pergaminho") ? "☀" : "☾";
+  const t = localStorage.getItem('tema');
+  document.body.classList.toggle('claro', t==='claro'||t==='pergaminho');
+  document.getElementById('btnTema').textContent = document.body.classList.contains('claro') ? '☀' : '☾';
 }
 function trocarTema(){
-  const claro = !document.body.classList.contains("pergaminho");
-  localStorage.setItem("tema", claro ? "claro" : "escuro");
+  const claro = !document.body.classList.contains('claro');
+  localStorage.setItem('tema', claro?'claro':'escuro');
   aplicarTema();
 }
 aplicarTema();
 
-function aviso(txt){
-  const a = document.getElementById("aviso");
-  a.textContent = txt; a.style.display = "block";
-  clearTimeout(a._t); a._t = setTimeout(()=>a.style.display="none", 2600);
+async function atualizarApp(){
+  try{ const n = await caches.keys(); await Promise.all(n.map(x=>caches.delete(x))); }catch(e){}
+  try{ const r = await navigator.serviceWorker.getRegistration(); if(r){ await r.update(); if(r.waiting) r.waiting.postMessage('skip'); } }catch(e){}
+  location.href = location.pathname + '?v=' + Date.now();
 }
-function esc(t){ return (t||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
-// ===============================================
-// INÍCIO
-// ===============================================
-(async function iniciar(){
+function aviso(t){
+  const a=document.getElementById('aviso');
+  a.textContent=t; a.style.display='block';
+  clearTimeout(a._t); a._t=setTimeout(()=>a.style.display='none',2800);
+}
+function esc(t){ return (t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ================= INÍCIO =================
+(async function(){
   const { data:{ session } } = await db.auth.getSession();
-  if(!session){ window.location.href = "index.html"; return; }
+  if(!session){ location.href='index.html'; return; }
 
-  const { data:p } = await db.from("profiles").select("*").eq("id", session.user.id).single();
-  if(!p){ window.location.href = "index.html"; return; }
+  const { data:p } = await db.from('profiles').select('*').eq('id', session.user.id).single();
+  if(!p){ location.href='index.html'; return; }
 
-  perfil = p;
-  souAdmin = (p.role === "admin");
-  usuarioAlvo = p.id;
-  document.getElementById("subtitulo").textContent = p.nome || p.email;
+  perfil=p; souAdmin=(p.role==='admin'); usuarioAlvo=p.id;
+  document.getElementById('linkVoltar').href = souAdmin ? 'admin.html' : 'aluno.html';
+  document.getElementById('subtitulo').textContent = p.nome || p.email;
 
   if(souAdmin){
-    const painel = document.getElementById("painelAdmin");
-    painel.style.display = "block";
-    const { data:lista } = await db.from("profiles").select("id,nome,email").order("nome");
-    const sel = document.getElementById("seletorMedium");
-    sel.innerHTML = (lista||[]).map(m =>
-      `<option value="${m.id}" ${m.id===p.id?"selected":""}>${esc(m.nome||m.email)}</option>`
-    ).join("");
+    document.getElementById('painelAdmin').classList.add('on');
+    const { data:lista } = await db.from('profiles').select('id,nome,email').order('nome');
+    document.getElementById('seletorMedium').innerHTML =
+      (lista||[]).map(m=>`<option value="${m.id}" ${m.id===p.id?'selected':''}>${esc(m.nome||m.email)}</option>`).join('');
   }
 
+  await carregarLinhas();
   await carregar();
 })();
 
 async function trocarMedium(){
-  usuarioAlvo = document.getElementById("seletorMedium").value;
-  const sel = document.getElementById("seletorMedium");
-  document.getElementById("subtitulo").textContent = sel.options[sel.selectedIndex].text;
+  const s = document.getElementById('seletorMedium');
+  usuarioAlvo = s.value;
+  document.getElementById('subtitulo').textContent = s.options[s.selectedIndex].text;
   await carregar();
 }
 
+// ================= LINHAS (direção) =================
+async function carregarLinhas(){
+  const { data, error } = await db.from('linhas').select('*').order('ordem').order('nome');
+  if(error){ aviso('Rode o SQL das linhas no Supabase.'); linhas=[]; return; }
+  linhas = data || [];
+}
+
+function abrirLinhas(){ document.getElementById('painelLinhas').classList.add('on'); desenharLinhas(); }
+function fecharLinhas(){ document.getElementById('painelLinhas').classList.remove('on'); limparFormLinha(); }
+
+function desenharLinhas(){
+  document.getElementById('listaLinhas').innerHTML = linhas.length
+    ? linhas.map((l,i)=>`
+      <div class="item-linha">
+        <div class="txt">
+          <b>${esc(l.nome)}</b>
+          <small>${esc(l.subtitulo||'')}${l.esquerda?' · esquerda':''}</small>
+        </div>
+        <button class="mini" onclick="moverLinha('${l.id}',-1)" ${i===0?'disabled':''}>&uarr;</button>
+        <button class="mini" onclick="moverLinha('${l.id}',1)" ${i===linhas.length-1?'disabled':''}>&darr;</button>
+        <button class="mini" onclick="editarLinha('${l.id}')">editar</button>
+        <button class="mini perigo" onclick="apagarLinha('${l.id}')">apagar</button>
+      </div>`).join('')
+    : '<div class="vazio">Nenhuma linha cadastrada ainda.</div>';
+}
+
+function limparFormLinha(){
+  document.getElementById('linhaId').value='';
+  document.getElementById('linhaNome').value='';
+  document.getElementById('linhaSub').value='';
+  document.getElementById('linhaEsq').checked=false;
+  document.getElementById('btnSalvarLinha').textContent='Adicionar linha';
+}
+
+function editarLinha(id){
+  const l = linhas.find(x=>x.id===id); if(!l) return;
+  document.getElementById('linhaId').value=l.id;
+  document.getElementById('linhaNome').value=l.nome||'';
+  document.getElementById('linhaSub').value=l.subtitulo||'';
+  document.getElementById('linhaEsq').checked=!!l.esquerda;
+  document.getElementById('btnSalvarLinha').textContent='Salvar alteração';
+  document.getElementById('linhaNome').focus();
+}
+
+async function salvarLinha(){
+  const nome = document.getElementById('linhaNome').value.trim();
+  if(!nome){ aviso('Escreva o nome da linha.'); return; }
+  const id = document.getElementById('linhaId').value;
+  const reg = {
+    nome: nome,
+    subtitulo: document.getElementById('linhaSub').value.trim() || null,
+    esquerda: document.getElementById('linhaEsq').checked
+  };
+  let erro;
+  if(id){ ({error:erro} = await db.from('linhas').update(reg).eq('id',id)); }
+  else{
+    reg.ordem = linhas.length ? Math.max.apply(null, linhas.map(l=>l.ordem||0))+1 : 1;
+    ({error:erro} = await db.from('linhas').insert(reg));
+  }
+  if(erro){ aviso('Não salvou: '+erro.message); return; }
+  limparFormLinha();
+  aviso('Linha guardada.');
+  await carregarLinhas(); desenharLinhas(); desenhar();
+}
+
+async function apagarLinha(id){
+  const l = linhas.find(x=>x.id===id); if(!l) return;
+  const { count } = await db.from('entidades').select('id',{count:'exact',head:true}).eq('linha_id',id);
+  const extra = count ? '\n\nATENÇÃO: isso apaga também '+count+' entidade(s) já cadastrada(s) nessa linha, de todos os médiuns.' : '';
+  if(!confirm('Apagar a linha "'+l.nome+'"?'+extra)) return;
+  const { error } = await db.from('linhas').delete().eq('id',id);
+  if(error){ aviso('Não deu pra apagar.'); return; }
+  aviso('Linha apagada.');
+  await carregarLinhas(); desenharLinhas(); await carregar();
+}
+
+async function moverLinha(id, dir){
+  const i = linhas.findIndex(l=>l.id===id);
+  const j = i + dir;
+  if(i<0 || j<0 || j>=linhas.length) return;
+  const a = linhas[i], b = linhas[j];
+  await db.from('linhas').update({ordem:j+1}).eq('id',a.id);
+  await db.from('linhas').update({ordem:i+1}).eq('id',b.id);
+  await carregarLinhas(); desenharLinhas(); desenhar();
+}
+
+// ================= ENTIDADES =================
 async function carregar(){
-  const { data, error } = await db.from("entidades")
-    .select("*").eq("user_id", usuarioAlvo)
-    .order("linha").order("created_at");
-  if(error){ aviso("Não deu pra carregar. Tente de novo."); return; }
+  const { data, error } = await db.from('entidades').select('*').eq('user_id', usuarioAlvo).order('created_at');
+  if(error){ aviso('Não deu pra carregar.'); return; }
   dados = data || [];
   desenhar();
 }
 
-// ===============================================
-// TELA
-// ===============================================
 function desenhar(){
-  const abertas = [...document.querySelectorAll(".linha.aberta")].map(e=>e.dataset.linha);
-  const podeEditar = (usuarioAlvo === perfil.id) || souAdmin;
+  const abertas = [].slice.call(document.querySelectorAll('.linha.aberta')).map(e=>e.dataset.id);
+  const podeEditar = (usuarioAlvo===perfil.id) || souAdmin;
 
-  document.getElementById("conteudo").innerHTML = LINHAS.map(L => {
-    const lista = dados.filter(e => e.linha === L.nome);
-    const cards = lista.length
-      ? lista.map(e => `
-        <div class="entidade">
-          <h4>${esc(e.nome)}</h4>
-          ${(e.tipo||e.dia) ? `<div class="meta">${esc(e.tipo||"")}${e.tipo&&e.dia?" · ":""}${esc(e.dia||"")}</div>`:""}
-          ${e.observacao ? `<div class="obs">${esc(e.observacao)}</div>`:""}
-          ${podeEditar ? `<div class="acoes">
-            <button onclick="editar('${e.id}')">editar</button>
-            <button onclick="apagar('${e.id}')">apagar</button>
-          </div>`:""}
-        </div>`).join("")
-      : `<div class="vazio">Nenhuma entidade registrada nesta linha.</div>`;
+  if(!linhas.length){
+    document.getElementById('conteudo').innerHTML =
+      '<div class="vazio">Nenhuma linha cadastrada. '+(souAdmin?'Use "Gerenciar linhas" aqui em cima.':'Fale com a direção da casa.')+'</div>';
+    return;
+  }
+
+  document.getElementById('conteudo').innerHTML = linhas.map(L=>{
+    const lista = dados.filter(e => e.linha_id===L.id || (!e.linha_id && e.linha===L.nome));
+    const cards = lista.length ? lista.map(e=>`
+      <div class="entidade">
+        <h4>${esc(e.nome)}</h4>
+        ${(e.tipo||e.dia)?`<div class="meta">${esc(e.tipo||'')}${e.tipo&&e.dia?' · ':''}${esc(e.dia||'')}</div>`:''}
+        ${e.observacao?`<div class="obs">${esc(e.observacao)}</div>`:''}
+        ${podeEditar?`<div class="acoes">
+          <button onclick="editar('${e.id}')">editar</button>
+          <button onclick="apagar('${e.id}')">apagar</button>
+        </div>`:''}
+      </div>`).join('') : '<div class="vazio">Nenhuma entidade registrada nesta linha.</div>';
 
     const form = podeEditar ? `
-      <button class="btn-add" onclick="abrirForm('${L.nome}')">+ Adicionar entidade</button>
-      <div class="form-ent" id="form-${L.nome}">
-        <input type="hidden" id="id-${L.nome}">
+      <button class="btn-add" onclick="abrirForm('${L.id}')">+ Adicionar entidade</button>
+      <div class="form-ent" id="f-${L.id}">
+        <input type="hidden" id="id-${L.id}">
         <div class="campo">
           <label>Nome da entidade</label>
-          <input id="nome-${L.nome}" placeholder="${L.esquerda ? "Ex: Exu Tranca Ruas" : "Ex: Caboclo Sete Flechas"}">
+          <input id="n-${L.id}" placeholder="${L.esquerda?'Ex: Exu Tranca Ruas':'Ex: Caboclo Sete Flechas'}">
         </div>
-        <div class="linha2">
+        <div class="duplo">
           <div class="campo">
             <label>Falange / povo</label>
-            <input id="tipo-${L.nome}" placeholder="${L.esquerda ? "Exu, Pombagira, Exu Mirim" : "Caboclo, Preto Velho, Criança…"}">
+            <input id="t-${L.id}" placeholder="${L.esquerda?'Exu, Pombagira…':'Caboclo, Preto Velho…'}">
           </div>
           <div class="campo">
             <label>Dia / gira</label>
-            <input id="dia-${L.nome}" placeholder="Ex: gira de caboclos">
+            <input id="d-${L.id}" placeholder="Ex: gira de caboclos">
           </div>
         </div>
         <div class="campo">
           <label>Observações</label>
-          <textarea id="obs-${L.nome}" placeholder="Ponto cantado, ervas, guias, firmeza, o que quiser guardar."></textarea>
+          <textarea id="o-${L.id}" placeholder="Ponto cantado, ervas, guias, firmeza."></textarea>
         </div>
         <div class="btns">
-          <button class="btn-ouro" onclick="salvar('${L.nome}')">Salvar</button>
-          <button class="btn-vazio" onclick="fecharForm('${L.nome}')">Cancelar</button>
+          <button class="btn-ouro" onclick="salvar('${L.id}')">Salvar</button>
+          <button class="btn-vazio" onclick="fecharForm('${L.id}')">Cancelar</button>
         </div>
-      </div>` : "";
+      </div>` : '';
 
     return `
-    <div class="linha ${L.esquerda?"esquerda":""} ${abertas.includes(L.nome)?"aberta":""}" data-linha="${L.nome}">
-      <div class="linha-topo" onclick="alternar(this)">
+    <div class="linha ${L.esquerda?'esq':''} ${abertas.indexOf(L.id)>=0?'aberta':''}" data-id="${L.id}">
+      <div class="linha-topo" onclick="this.parentElement.classList.toggle('aberta')">
         <div>
-          <div class="linha-nome">${L.nome}</div>
-          <div class="linha-sub">${L.sub}</div>
+          <div class="linha-nome">${esc(L.nome)}</div>
+          ${L.subtitulo?`<div class="linha-sub">${esc(L.subtitulo)}</div>`:''}
         </div>
         <div class="contador">${lista.length}</div>
       </div>
       <div class="linha-corpo">${cards}${form}</div>
     </div>`;
-  }).join("");
+  }).join('');
 }
 
-function alternar(el){ el.parentElement.classList.toggle("aberta"); }
-
-function abrirForm(linha){
-  document.getElementById("id-"+linha).value = "";
-  ["nome","tipo","dia","obs"].forEach(c => document.getElementById(c+"-"+linha).value = "");
-  document.getElementById("form-"+linha).classList.add("ativo");
-  document.getElementById("nome-"+linha).focus();
+function abrirForm(id){
+  document.getElementById('id-'+id).value='';
+  ['n','t','d','o'].forEach(c=>document.getElementById(c+'-'+id).value='');
+  document.getElementById('f-'+id).classList.add('on');
+  document.getElementById('n-'+id).focus();
 }
-function fecharForm(linha){ document.getElementById("form-"+linha).classList.remove("ativo"); }
+function fecharForm(id){ document.getElementById('f-'+id).classList.remove('on'); }
 
-function editar(id){
-  const e = dados.find(x => x.id === id);
-  if(!e) return;
-  const L = e.linha;
-  document.querySelector(`.linha[data-linha="${L}"]`).classList.add("aberta");
-  document.getElementById("form-"+L).classList.add("ativo");
-  document.getElementById("id-"+L).value = e.id;
-  document.getElementById("nome-"+L).value = e.nome || "";
-  document.getElementById("tipo-"+L).value = e.tipo || "";
-  document.getElementById("dia-"+L).value = e.dia || "";
-  document.getElementById("obs-"+L).value = e.observacao || "";
-  document.getElementById("nome-"+L).focus();
+function editar(entId){
+  const e = dados.find(x=>x.id===entId); if(!e) return;
+  const L = linhas.find(l => l.id===e.linha_id || l.nome===e.linha); if(!L) return;
+  document.querySelector('.linha[data-id="'+L.id+'"]').classList.add('aberta');
+  document.getElementById('f-'+L.id).classList.add('on');
+  document.getElementById('id-'+L.id).value=e.id;
+  document.getElementById('n-'+L.id).value=e.nome||'';
+  document.getElementById('t-'+L.id).value=e.tipo||'';
+  document.getElementById('d-'+L.id).value=e.dia||'';
+  document.getElementById('o-'+L.id).value=e.observacao||'';
+  document.getElementById('n-'+L.id).focus();
 }
 
-async function salvar(linha){
-  const nome = document.getElementById("nome-"+linha).value.trim();
-  if(!nome){ aviso("Escreva o nome da entidade."); return; }
-  const id = document.getElementById("id-"+linha).value;
+async function salvar(linhaId){
+  const nome = document.getElementById('n-'+linhaId).value.trim();
+  if(!nome){ aviso('Escreva o nome da entidade.'); return; }
+  const L = linhas.find(l=>l.id===linhaId);
+  const id = document.getElementById('id-'+linhaId).value;
   const reg = {
     user_id: usuarioAlvo,
-    linha: linha,
+    linha_id: linhaId,
+    linha: L ? L.nome : null,
     nome: nome,
-    tipo: document.getElementById("tipo-"+linha).value.trim() || null,
-    dia: document.getElementById("dia-"+linha).value.trim() || null,
-    observacao: document.getElementById("obs-"+linha).value.trim() || null
+    tipo: document.getElementById('t-'+linhaId).value.trim() || null,
+    dia: document.getElementById('d-'+linhaId).value.trim() || null,
+    observacao: document.getElementById('o-'+linhaId).value.trim() || null
   };
   let erro;
-  if(id){ ({ error:erro } = await db.from("entidades").update(reg).eq("id", id)); }
-  else  { ({ error:erro } = await db.from("entidades").insert(reg)); }
-  if(erro){ aviso("Não salvou: " + erro.message); return; }
-  fecharForm(linha);
-  aviso("Guardado.");
-  await carregar();
-  document.querySelector(`.linha[data-linha="${linha}"]`).classList.add("aberta");
+  if(id){ ({error:erro} = await db.from('entidades').update(reg).eq('id',id)); }
+  else  { ({error:erro} = await db.from('entidades').insert(reg)); }
+  if(erro){ aviso('Não salvou: '+erro.message); return; }
+  fecharForm(linhaId); aviso('Guardado.'); await carregar();
+  const el = document.querySelector('.linha[data-id="'+linhaId+'"]');
+  if(el) el.classList.add('aberta');
 }
 
-async function apagar(id){
-  const e = dados.find(x => x.id === id);
-  if(!confirm("Apagar " + (e ? e.nome : "esta entidade") + "?")) return;
-  const { error } = await db.from("entidades").delete().eq("id", id);
-  if(error){ aviso("Não deu pra apagar."); return; }
-  aviso("Apagado.");
-  await carregar();
+async function apagar(entId){
+  const e = dados.find(x=>x.id===entId);
+  if(!confirm('Apagar '+(e?e.nome:'esta entidade')+'?')) return;
+  const { error } = await db.from('entidades').delete().eq('id',entId);
+  if(error){ aviso('Não deu pra apagar.'); return; }
+  aviso('Apagado.'); await carregar();
 }
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(function(){}); }
 </script>
 </body>
 </html>
