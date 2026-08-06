@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lembretes — Casa de Estudo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --noite:#0D1321; --noite2:#111A2E; --card:#16203A; --borda:#243350;
+  --ouro:#C9A227; --ouro-claro:#E8CE7A; --branco:#F5F2EA; --suave:#9FB0CC;
+  --perigo:#C46A6A; --verde:#6FA87C; --azul:#7C9BC4;
+}
+body.claro{
+  --noite:#EFE6D2; --noite2:#E6DBC2; --card:#F7F1E2; --borda:#D4C5A1;
+  --ouro:#8A6A17; --ouro-claro:#6B520F; --branco:#2B2416; --suave:#6D6045;
+  --perigo:#9E3B3B; --verde:#3E6B4A; --azul:#3E5A7C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--noite);color:var(--branco);font-family:'Jost',sans-serif;font-weight:300;min-height:100vh;padding-bottom:80px}
+header{background:linear-gradient(180deg,var(--noite2),var(--noite));border-bottom:1px solid var(--borda);padding:22px 18px 18px;text-align:center;position:relative}
+header h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;color:var(--ouro-claro)}
+header p{font-size:13px;color:var(--suave);margin-top:4px}
+.canto{position:absolute;top:14px;display:flex;gap:8px}
+.canto.esq{left:14px} .canto.dir{right:14px}
+.canto a,.canto button{color:var(--suave);text-decoration:none;font-size:12px;border:1px solid var(--borda);border-radius:8px;padding:6px 10px;background:transparent;cursor:pointer;font-family:'Jost',sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:16px 14px}
+select,input,textarea{width:100%;background:var(--noite2);border:1px solid var(--borda);color:var(--branco);border-radius:8px;padding:10px 12px;font-family:'Jost',sans-serif;font-size:15px}
+textarea{resize:vertical;min-height:64px}
+label{font-size:11px;color:var(--suave);display:block;margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase}
+.campo{margin-bottom:10px}
+.grade{display:flex;gap:10px;flex-wrap:wrap}
+.grade>div{flex:1;min-width:130px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.btn-ouro{background:var(--ouro);color:#1a1206;border:none;border-radius:8px;padding:11px 18px;font-family:'Jost',sans-serif;font-weight:500;font-size:14px;cursor:pointer}
+.btn-vazio{background:transparent;color:var(--suave);border:1px solid var(--borda);border-radius:8px;padding:11px 18px;font-family:'Jost',sans-serif;font-size:14px;cursor:pointer}
+.mini{background:transparent;border:1px solid var(--borda);color:var(--suave);border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;white-space:nowrap}
+.mini.ok{color:var(--verde);border-color:rgba(111,168,124,.45)}
+.mini.perigo{color:var(--perigo);border-color:rgba(196,106,106,.4)}
+
+.bloco{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:14px}
+.bloco h3{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--ouro-claro);margin-bottom:10px}
+.bloco.dobra .corpo{display:none}
+.bloco.dobra.on .corpo{display:block}
+.bloco.dobra h3{cursor:pointer;margin-bottom:0}
+.bloco.dobra.on h3{margin-bottom:10px}
+
+.abas{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+.abas button{background:transparent;border:1px solid var(--borda);color:var(--suave);border-radius:20px;padding:8px 15px;font-family:'Jost',sans-serif;font-size:13px;cursor:pointer;white-space:nowrap}
+.abas button.on{border-color:var(--ouro);color:var(--ouro-claro);background:rgba(201,162,39,.1)}
+
+.secao{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--suave);letter-spacing:1px;text-transform:uppercase;margin:18px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--borda)}
+
+.item{background:var(--card);border:1px solid var(--borda);border-left:3px solid var(--borda);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.item.casa{border-left-color:var(--azul)}
+.item.meu{border-left-color:var(--ouro)}
+.item.pagto{border-left-color:var(--perigo)}
+.item.hoje{background:rgba(201,162,39,.08)}
+.item.feito{opacity:.5}
+.item .topo{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.item h4{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;line-height:1.25}
+.item .quando{font-size:11.5px;color:var(--suave);margin-top:2px}
+.item p{font-size:14px;line-height:1.5;margin-top:8px;white-space:pre-wrap;opacity:.9}
+.item .acoes{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.item.feito h4{text-decoration:line-through}
+
+.tag{font-size:10.5px;border-radius:20px;padding:3px 9px;white-space:nowrap;border:1px solid var(--borda);color:var(--suave);letter-spacing:.5px}
+.tag.casa{color:var(--azul);border-color:rgba(124,155,196,.45)}
+.tag.meu{color:var(--ouro-claro);border-color:rgba(201,162,39,.45)}
+.tag.pagto{color:var(--perigo);border-color:rgba(196,106,106,.45)}
+.tag.hoje{color:var(--ouro-claro);border-color:var(--ouro);background:rgba(201,162,39,.12)}
+.tag.atraso{color:var(--perigo);border-color:rgba(196,106,106,.45)}
+
+.faixa{background:rgba(201,162,39,.09);border:1px solid rgba(201,162,39,.4);border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:13.5px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.vazio{font-size:14px;color:var(--suave);font-style:italic;padding:16px 2px}
+.carregando{text-align:center;color:var(--suave);padding:40px 0;font-style:italic}
+#aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--card);border:1px solid var(--ouro);padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:60}
+@media(max-width:520px){header h1{font-size:25px}.grade>div{min-width:100%}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="canto esq"><a href="#" id="linkVoltar">← Voltar</a></div>
+  <div class="canto dir">
+    <button onclick="atualizarApp()">Atualizar</button>
+    <button onclick="trocarTema()" id="btnTema">☾</button>
+  </div>
+  <h1>Lembretes</h1>
+  <p id="subtitulo">Carregando…</p>
+</header>
+
+<div class="wrap" id="wrap">
+  <div class="carregando">Reunindo os lembretes…</div>
+</div>
+
+<div id="aviso"></div>
+
+<script>
+// ================= CONFIGURAÇÃO =================
+const SUPABASE_URL = "https://jqepdfxtqdjtozbrlkrm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXBkZnh0cWRqdG96YnJsa3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTM4NjUsImV4cCI6MjEwMTE4OTg2NX0.9B_GAcACUsRBAe1GY7MUzmk1prquDsA6YsKp3f3v4Z0";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let perfil=null, souAdmin=false, pessoas=[], itens=[], filtro='proximos';
+
+// ================= UTIL =================
+function aplicarTema(){
+  const t = localStorage.getItem('tema');
+  document.body.classList.toggle('claro', t==='claro'||t==='pergaminho');
+  document.getElementById('btnTema').textContent = document.body.classList.contains('claro') ? '☀' : '☾';
+}
+function trocarTema(){
+  const claro = !document.body.classList.contains('claro');
+  localStorage.setItem('tema', claro?'claro':'escuro');
+  aplicarTema();
+}
+aplicarTema();
+
+async function atualizarApp(){
+  try{ const n = await caches.keys(); await Promise.all(n.map(x=>caches.delete(x))); }catch(e){}
+  try{ const r = await navigator.serviceWorker.getRegistration(); if(r){ await r.update(); if(r.waiting) r.waiting.postMessage('skip'); } }catch(e){}
+  location.href = location.pathname + '?v=' + Date.now();
+}
+function aviso(t){
+  const a=document.getElementById('aviso');
+  a.textContent=t; a.style.display='block';
+  clearTimeout(a._t); a._t=setTimeout(()=>a.style.display='none',3000);
+}
+function esc(t){ return (t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function hoje(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function dataISO(d){
+  const m=String(d.getMonth()+1).padStart(2,'0'), dia=String(d.getDate()).padStart(2,'0');
+  return d.getFullYear()+'-'+m+'-'+dia;
+}
+function soData(iso){ return String(iso||'').slice(0,10); }
+function dataBR(iso){ const p=soData(iso).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function diasAte(iso){
+  const d = new Date(soData(iso)+'T00:00:00');
+  return Math.round((d - hoje())/86400000);
+}
+function quando(iso, hora){
+  const n = diasAte(iso);
+  const h = hora ? ' às ' + String(hora).slice(0,5) : '';
+  if(n===0) return 'Hoje' + h;
+  if(n===1) return 'Amanhã' + h;
+  if(n===-1) return 'Ontem' + h;
+  if(n>1) return 'Em ' + n + ' dias · ' + dataBR(iso) + h;
+  return 'Há ' + Math.abs(n) + ' dias · ' + dataBR(iso) + h;
+}
+
+// ================= INÍCIO =================
+(async function(){
+  const { data:{ session } } = await db.auth.getSession();
+  if(!session){ location.href='index.html'; return; }
+  const { data:p } = await db.from('profiles').select('*').eq('id', session.user.id).single();
+  if(!p){ location.href='index.html'; return; }
+
+  perfil=p; souAdmin=(p.role==='admin');
+  document.getElementById('linkVoltar').href = souAdmin ? 'admin.html' : 'aluno.html';
+  document.getElementById('subtitulo').textContent = p.nome || p.email;
+
+  if(souAdmin){
+    const { data:l } = await db.from('profiles').select('id,nome,email').order('nome');
+    pessoas = l || [];
+  }
+  await recarregar();
+})();
+
+async function recarregar(){
+  itens = [];
+
+  // 1) Avisos da casa (mesma tabela do calendário)
+  try{
+    const { data:evs } = await db.from('eventos').select('*, eventos_destinatarios(aluno_id)').order('data');
+    (evs||[]).forEach(e=>{
+      const praMim = e.para_todos || (e.eventos_destinatarios||[]).some(d=>d.aluno_id===perfil.id);
+      if(!praMim && !souAdmin) return;
+      itens.push({
+        id:'ev-'+e.id, origem:'casa', ref:e.id,
+        titulo:e.titulo, descricao:e.descricao, data:soData(e.data), hora:null,
+        etiqueta: e.para_todos ? 'Aviso da casa' : 'Aviso da casa · dirigido',
+        meu:false
+      });
+    });
+  }catch(err){}
+
+  // 2) Meus lembretes
+  try{
+    const { data:lp, error } = await db.from('lembretes_pessoais').select('*').eq('user_id', perfil.id).order('data');
+    if(error) throw error;
+    (lp||[]).forEach(l=>{
+      itens.push({
+        id:'lp-'+l.id, origem:'meu', ref:l.id,
+        titulo:l.titulo, descricao:l.descricao, data:soData(l.data), hora:l.hora,
+        etiqueta:'Meu lembrete', concluido:l.concluido, meu:true
+      });
+    });
+  }catch(err){ aviso('Rode o adicionar-lembretes.sql no Supabase.'); }
+
+  // 3) Lembretes de mensalidade
+  try{
+    const { data:lm } = await db.from('lembretes_mensalidade').select('*').eq('user_id', perfil.id);
+    (lm||[]).forEach(l=>{
+      itens.push({
+        id:'lm-'+l.id, origem:'pagto', ref:l.id,
+        titulo:'Mensalidade em aberto', descricao:l.mensagem,
+        data:soData(l.data_lembrete), hora:null,
+        etiqueta:'Da tesouraria', meu:false
+      });
+    });
+  }catch(err){}
+
+  desenhar();
+  notificarDeHoje();
+}
+
+// ================= NOTIFICAÇÃO =================
+function podeNotificar(){ return ('Notification' in window); }
+async function pedirNotificacao(){
+  if(!podeNotificar()){ aviso('Este aparelho não permite notificação.'); return; }
+  const p = await Notification.requestPermission();
+  aviso(p==='granted' ? 'Notificações ligadas.' : 'Notificações continuam desligadas.');
+  desenhar();
+}
+function notificarDeHoje(){
+  if(!podeNotificar() || Notification.permission!=='granted') return;
+  const chave = 'avisado-' + dataISO(hoje());
+  let ja = [];
+  try{ ja = JSON.parse(localStorage.getItem(chave) || '[]'); }catch(e){}
+  const doDia = itens.filter(i => !i.concluido && diasAte(i.data)===0 && ja.indexOf(i.id)<0);
+  doDia.forEach(i=>{
+    try{ new Notification(i.titulo, { body: (i.descricao||i.etiqueta) }); }catch(e){}
+    ja.push(i.id);
+  });
+  if(doDia.length) localStorage.setItem(chave, JSON.stringify(ja));
+}
+
+// ================= TELA =================
+function mudarFiltro(f){ filtro=f; desenhar(); }
+
+function desenhar(){
+  const permissao = podeNotificar() ? Notification.permission : 'indisponivel';
+  const faixa = (permissao==='granted') ? '' :
+    '<div class="faixa"><span>Ligue o aviso do aparelho para ser notificado no dia.</span>'
+    + '<button class="mini" onclick="pedirNotificacao()">Ligar notificação</button></div>';
+
+  const formMeu = '<div class="bloco dobra" id="blocoMeu">'
+    + '<h3 onclick="document.getElementById(\'blocoMeu\').classList.toggle(\'on\')">+ Criar um lembrete para mim</h3>'
+    + '<div class="corpo">'
+    + '<input type="hidden" id="meuId">'
+    + '<div class="campo"><label>Título</label><input id="meuTitulo" placeholder="Ex: levar as velas brancas"></div>'
+    + '<div class="grade">'
+    + '<div class="campo"><label>Dia</label><input type="date" id="meuData" value="'+dataISO(hoje())+'"></div>'
+    + '<div class="campo"><label>Hora (opcional)</label><input type="time" id="meuHora"></div>'
+    + '</div>'
+    + '<div class="campo"><label>Descrição</label><textarea id="meuDesc" placeholder="O que precisa lembrar."></textarea></div>'
+    + '<div class="btns"><button class="btn-ouro" onclick="salvarMeu()" id="btnMeu">Guardar lembrete</button>'
+    + '<button class="btn-vazio" onclick="limparMeu()">Limpar</button></div>'
+    + '</div></div>';
+
+  let formCasa = '';
+  if(souAdmin){
+    formCasa = '<div class="bloco dobra" id="blocoCasa">'
+      + '<h3 onclick="document.getElementById(\'blocoCasa\').classList.toggle(\'on\')">+ Comunicar algo à casa</h3>'
+      + '<div class="corpo">'
+      + '<div class="campo"><label>Título</label><input id="casaTitulo" placeholder="Ex: gira de Pretos Velhos"></div>'
+      + '<div class="campo"><label>Dia</label><input type="date" id="casaData" value="'+dataISO(hoje())+'"></div>'
+      + '<div class="campo"><label>Descrição</label><textarea id="casaDesc" placeholder="Detalhes do comunicado."></textarea></div>'
+      + '<div class="campo"><label>Para quem</label><select id="casaPara" onchange="document.getElementById(\'listaPessoas\').style.display = this.value===\'todos\'?\'none\':\'block\'">'
+      + '<option value="todos">Toda a casa</option><option value="alguns">Escolher médiuns</option></select></div>'
+      + '<div class="campo" id="listaPessoas" style="display:none">'
+      + '<label>Médiuns</label>'
+      + '<div style="max-height:190px;overflow:auto;border:1px solid var(--borda);border-radius:8px;padding:9px">'
+      + pessoas.map(u=>'<label style="display:flex;align-items:center;gap:8px;padding:4px 0;text-transform:none;font-size:14px;cursor:pointer">'
+        + '<input type="checkbox" class="pes" value="'+u.id+'" style="width:auto"><span>'+esc(u.nome||u.email)+'</span></label>').join('')
+      + '</div></div>'
+      + '<div class="btns"><button class="btn-ouro" onclick="salvarCasa()">Enviar comunicado</button></div>'
+      + '<div style="font-size:12.5px;color:var(--suave);margin-top:10px">Também aparece na Agenda de quem receber.</div>'
+      + '</div></div>';
+  }
+
+  const abas = '<div class="abas">'
+    + '<button class="'+(filtro==='proximos'?'on':'')+'" onclick="mudarFiltro(\'proximos\')">Pela frente</button>'
+    + '<button class="'+(filtro==='casa'?'on':'')+'" onclick="mudarFiltro(\'casa\')">Da casa</button>'
+    + '<button class="'+(filtro==='meus'?'on':'')+'" onclick="mudarFiltro(\'meus\')">Meus</button>'
+    + '<button class="'+(filtro==='passados'?'on':'')+'" onclick="mudarFiltro(\'passados\')">Passados</button>'
+    + '<button class="'+(filtro==='feitos'?'on':'')+'" onclick="mudarFiltro(\'feitos\')">Concluídos</button>'
+    + '</div>';
+
+  let lista = itens.filter(i=>{
+    const d = diasAte(i.data);
+    if(filtro==='proximos') return !i.concluido && d>=0;
+    if(filtro==='casa')     return i.origem==='casa' && !i.concluido;
+    if(filtro==='meus')     return i.origem==='meu' && !i.concluido;
+    if(filtro==='passados') return !i.concluido && d<0;
+    if(filtro==='feitos')   return !!i.concluido;
+    return true;
+  });
+
+  const futuroPrimeiro = (filtro==='passados'||filtro==='feitos');
+  lista.sort((a,b)=> futuroPrimeiro ? (a.data<b.data?1:-1) : (a.data>b.data?1:-1));
+
+  let html = '';
+  if(!lista.length){
+    html = '<div class="vazio">Nada por aqui.</div>';
+  } else {
+    let secaoAtual = '';
+    lista.forEach(i=>{
+      const d = diasAte(i.data);
+      let sec;
+      if(filtro==='passados'||filtro==='feitos') sec='';
+      else if(d<0) sec='Atrasados';
+      else if(d===0) sec='Hoje';
+      else if(d<=7) sec='Nesta semana';
+      else sec='Mais adiante';
+      if(sec && sec!==secaoAtual){ html += '<div class="secao">'+sec+'</div>'; secaoAtual=sec; }
+      html += cartao(i);
+    });
+  }
+
+  document.getElementById('wrap').innerHTML = faixa + formCasa + formMeu + abas + html;
+}
+
+function cartao(i){
+  const d = diasAte(i.data);
+  const classes = ['item', i.origem, (d===0?'hoje':''), (i.concluido?'feito':'')].join(' ');
+  const marca = d===0 ? '<span class="tag hoje">hoje</span>'
+              : (d<0 && !i.concluido ? '<span class="tag atraso">passou</span>' : '');
+  const acoes = i.origem==='meu'
+    ? '<div class="acoes">'
+      + (i.concluido
+          ? '<button class="mini" onclick="concluir(\''+i.ref+'\',false)">Reabrir</button>'
+          : '<button class="mini ok" onclick="concluir(\''+i.ref+'\',true)">Concluir</button>'
+            + '<button class="mini" onclick="editarMeu(\''+i.ref+'\')">Editar</button>')
+      + '<button class="mini perigo" onclick="apagarMeu(\''+i.ref+'\')">Apagar</button></div>'
+    : '';
+  return '<div class="'+classes+'">'
+    + '<div class="topo"><div><h4>'+esc(i.titulo)+'</h4>'
+    + '<div class="quando">'+quando(i.data, i.hora)+'</div></div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap">'+marca+'<span class="tag '+i.origem+'">'+esc(i.etiqueta)+'</span></div></div>'
+    + (i.descricao?'<p>'+esc(i.descricao)+'</p>':'')
+    + acoes + '</div>';
+}
+
+// ================= MEUS LEMBRETES =================
+function limparMeu(){
+  document.getElementById('meuId').value='';
+  document.getElementById('meuTitulo').value='';
+  document.getElementById('meuDesc').value='';
+  document.getElementById('meuHora').value='';
+  document.getElementById('meuData').value=dataISO(hoje());
+  document.getElementById('btnMeu').textContent='Guardar lembrete';
+}
+
+function editarMeu(id){
+  const i = itens.find(x=>x.origem==='meu' && x.ref===id); if(!i) return;
+  document.getElementById('blocoMeu').classList.add('on');
+  document.getElementById('meuId').value=i.ref;
+  document.getElementById('meuTitulo').value=i.titulo||'';
+  document.getElementById('meuDesc').value=i.descricao||'';
+  document.getElementById('meuData').value=i.data;
+  document.getElementById('meuHora').value=i.hora?String(i.hora).slice(0,5):'';
+  document.getElementById('btnMeu').textContent='Salvar alteração';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function salvarMeu(){
+  const titulo = document.getElementById('meuTitulo').value.trim();
+  const data = document.getElementById('meuData').value;
+  if(!titulo){ aviso('Escreva o título.'); return; }
+  if(!data){ aviso('Escolha o dia.'); return; }
+  const id = document.getElementById('meuId').value;
+  const reg = {
+    user_id: perfil.id, titulo: titulo,
+    descricao: document.getElementById('meuDesc').value.trim() || null,
+    data: data,
+    hora: document.getElementById('meuHora').value || null
+  };
+  let erro;
+  if(id){ ({error:erro} = await db.from('lembretes_pessoais').update(reg).eq('id',id)); }
+  else  { ({error:erro} = await db.from('lembretes_pessoais').insert(reg)); }
+  if(erro){ aviso('Não salvou: '+erro.message); return; }
+  limparMeu(); aviso('Lembrete guardado.'); await recarregar();
+}
+
+async function concluir(id, valor){
+  const { error } = await db.from('lembretes_pessoais').update({concluido:valor}).eq('id',id);
+  if(error){ aviso('Não deu.'); return; }
+  await recarregar();
+}
+
+async function apagarMeu(id){
+  if(!confirm('Apagar este lembrete?')) return;
+  const { error } = await db.from('lembretes_pessoais').delete().eq('id',id);
+  if(error){ aviso('Não deu.'); return; }
+  aviso('Apagado.'); await recarregar();
+}
+
+// ================= COMUNICADO DA CASA =================
+async function salvarCasa(){
+  const titulo = document.getElementById('casaTitulo').value.trim();
+  const data = document.getElementById('casaData').value;
+  if(!titulo){ aviso('Escreva o título.'); return; }
+  if(!data){ aviso('Escolha o dia.'); return; }
+  const paraTodos = document.getElementById('casaPara').value === 'todos';
+  const marcados = [].slice.call(document.querySelectorAll('.pes:checked')).map(c=>c.value);
+  if(!paraTodos && !marcados.length){ aviso('Escolha ao menos um médium.'); return; }
+
+  const { data:ev, error } = await db.from('eventos').insert({
+    titulo: titulo,
+    descricao: document.getElementById('casaDesc').value.trim() || null,
+    data: data, para_todos: paraTodos
+  }).select().single();
+  if(error){ aviso('Não enviou: '+error.message); return; }
+
+  if(!paraTodos){
+    await db.from('eventos_destinatarios').insert(marcados.map(id=>({evento_id:ev.id, aluno_id:id})));
+  }
+
+  document.getElementById('casaTitulo').value='';
+  document.getElementById('casaDesc').value='';
+  [].slice.call(document.querySelectorAll('.pes')).forEach(c=>c.checked=false);
+  aviso('Comunicado enviado.');
+  await recarregar();
+}
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(function(){}); }
+</script>
+</body>
+</html>
