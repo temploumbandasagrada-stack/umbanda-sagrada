@@ -5,7 +5,7 @@
 //
 // >>> Toda vez que subir arquivo novo, troque o número aqui embaixo <<<
 // ============================================================
-const VERSAO = 'casa-de-estudo-v11';
+const VERSAO = 'casa-de-estudo-v12';
 
 const ESSENCIAIS = [
   './',
