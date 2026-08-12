@@ -351,6 +351,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="menu-op nav" data-secao="giras" onclick="irPara('giras')">Giras</button>
   <button class="menu-op nav" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
   <button class="menu-op nav" onclick="location.href='entidades.html'">Minhas Entidades</button>
+  <button class="menu-op nav" onclick="location.href='filmes.html'">Filmes</button>
   <button class="menu-op nav" onclick="location.href='lembretes.html'">Lembretes</button>
   <button class="menu-op nav" onclick="location.href='mensalidade.html'">Mensalidade</button>
   <div style="height:1px; background:var(--linha); margin:4px 0"></div>
@@ -649,7 +650,7 @@ const CATEGORIAS = [
   { chave: 'avancado', nome: 'Avançado' },
   { chave: 'outros', nome: 'Outros cursos' }
 ];
-let cursosCache = [], acessosSet = new Set(), aprovadasSet = new Set();
+let cursosCache = [], acessosSet = new Set(), aprovadasSet = new Set(), cursoAbertoId = null;
 
 async function carregarCursos() {
   const { data: cursos } = await db.from('cursos')
@@ -696,20 +697,25 @@ function avisoBloqueado() {
   alert('Este curso ainda não foi liberado para você pela direção da casa. Em breve!');
 }
 
-function abrirCurso(cursoId) {
-  const c = cursosCache.find(x => x.id === cursoId);
-  if (!c) return;
-  document.getElementById('cursoModalTitulo').textContent = c.titulo;
-  const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
-  const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
-  const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
-  document.getElementById('cursoModalCorpo').innerHTML = `
-    <p class="mudo">${escapeHtml(c.descricao || '')}</p>
-    <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
-      <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
-    </div>
-    <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
-    ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
+
+/* Módulos em sequência: o próximo só abre depois de aprovado na prova do anterior */
+function renderModulosSequencial(c) {
+  const mods = (c.modulos || []).slice().sort((a,b) => a.ordem - b.ordem);
+  let liberado = true;
+  return mods.map(m => {
+    const aulasOk = (m.aulas || []).every(a => concluidas.has(a.id));
+    const provasOk = (m.provas || []).every(p => aprovadasSet.has(p.id));
+    const esteLiberado = liberado;
+    if (!(aulasOk && provasOk)) liberado = false;
+
+    if (!esteLiberado) {
+      return `
+      <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px; opacity:.45">
+        <strong class="serif" style="font-size:1.05rem">🔒 ${escapeHtml(m.titulo)}</strong>
+        <p class="mudo" style="font-size:.8rem; margin-top:4px">Conclua o módulo anterior e seja aprovado na prova para liberar.</p>
+      </div>`;
+    }
+    return `
       <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
         <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
         ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
@@ -725,7 +731,25 @@ function abrirCurso(cursoId) {
               ? `<span class="selo verde">✔ Prova concluída: ${escapeHtml(p.titulo)}</span>`
               : `<button class="btn btn-mini" onclick="abrirProva('${p.id}')">Fazer prova: ${escapeHtml(p.titulo)}</button>`}
           </div>`).join('')}
-      </div>`).join('')}
+      </div>`;
+  }).join('');
+}
+
+function abrirCurso(cursoId) {
+  const c = cursosCache.find(x => x.id === cursoId);
+  if (!c) return;
+  cursoAbertoId = cursoId;
+  document.getElementById('cursoModalTitulo').textContent = c.titulo;
+  const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
+  const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
+  const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
+  document.getElementById('cursoModalCorpo').innerHTML = `
+    <p class="mudo">${escapeHtml(c.descricao || '')}</p>
+    <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+      <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
+    </div>
+    <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
+    ${renderModulosSequencial(c)}
   `;
   document.getElementById('veuCurso').classList.add('aberto');
 }
@@ -785,13 +809,36 @@ async function entregarProva() {
   const nota = Math.round(acertos / qs.length * 100);
   const aprovado = nota >= provaAberta.nota_minima;
   await db.from('resultados_provas').insert({ prova_id: provaAberta.id, aluno_id: eu.id, nota, aprovado });
+
+  // Mostra a correção: o que acertou, o que errou e qual era a certa
+  const letras = { a:'A', b:'B', c:'C', d:'D' };
+  document.getElementById('provaModalCorpo').innerHTML =
+    `<div class="aviso ${aprovado ? 'ok' : 'erro'}" style="display:block">
+      ${aprovado ? 'Aprovado, axé!' : 'Ainda não foi desta vez.'}
+      Você acertou <strong>${acertos} de ${qs.length}</strong> (${nota}%). Mínimo: ${provaAberta.nota_minima}%.
+      ${aprovado ? '' : ' Revise o conteúdo e refaça a prova.'}
+    </div>` +
+    qs.sort((x,y) => x.ordem - y.ordem).map((q, i) => {
+      const marcada = document.querySelector(`input[name="q_${q.id}"]:checked`);
+      const resp = marcada ? marcada.value : null;
+      const certo = resp === q.correta;
+      return `
+      <div style="margin-top:16px; padding:12px; border-radius:10px; border:1px solid ${certo ? 'rgba(111,168,124,.5)' : 'rgba(196,106,106,.5)'}">
+        <strong>${i + 1}. ${escapeHtml(q.enunciado)}</strong>
+        <p style="margin-top:8px; font-size:.92rem">
+          ${certo
+            ? `<span class="selo verde">✔ Você acertou</span> — ${letras[q.correta]}) ${escapeHtml(q['opcao_' + q.correta])}`
+            : `<span class="selo vermelho">✘ Você marcou ${letras[resp]}) ${escapeHtml(q['opcao_' + resp])}</span><br>
+               <span class="selo verde" style="margin-top:6px; display:inline-block">Correta: ${letras[q.correta]}) ${escapeHtml(q['opcao_' + q.correta])}</span>`}
+        </p>
+      </div>`;
+    }).join('');
+
   const el = document.getElementById('avisoProva');
-  el.className = 'aviso ' + (aprovado ? 'ok' : 'erro');
-  el.textContent = aprovado
-    ? `Aprovado, axé! Sua nota: ${nota}%.`
-    : `Nota: ${nota}%. Mínimo: ${provaAberta.nota_minima}%. Estude mais um pouco e tente novamente.`;
+  el.className = 'aviso'; el.textContent = '';
   document.getElementById('btnEntregarProva').style.display = 'none';
   carregarCursos();
+  if (aprovado && cursoAbertoId) setTimeout(() => abrirCurso(cursoAbertoId), 1200);
 }
 
 /* ==================== BIBLIOTECA ==================== */
