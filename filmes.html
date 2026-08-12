@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Filmes — Casa de Estudo</title>
+<title>Filmes e Documentários — Casa de Estudo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -50,6 +50,11 @@ label{font-size:11px;color:var(--suave);display:block;margin-bottom:4px;letter-s
 .filme .acoes{display:flex;gap:10px;padding:0 11px 11px}
 .filme .acoes button{background:none;border:none;color:var(--suave);font-size:12px;cursor:pointer;font-family:'Jost',sans-serif;text-decoration:underline;padding:0}
 .filme .acoes button.perigo{color:var(--perigo)}
+.secao-titulo{display:flex;align-items:center;gap:12px;margin:26px 0 14px}
+.secao-titulo:first-child{margin-top:4px}
+.secao-titulo h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--ouro-claro);white-space:nowrap}
+.secao-titulo .conta{font-size:11px;color:var(--suave);border:1px solid var(--borda);border-radius:20px;padding:3px 10px}
+.secao-titulo .risco{flex:1;height:1px;background:var(--borda)}
 .vazio{font-size:14px;color:var(--suave);font-style:italic;padding:20px 4px;text-align:center}
 .carregando{text-align:center;color:var(--suave);padding:40px 0;font-style:italic}
 #aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--card);border:1px solid var(--ouro);padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:60}
@@ -64,18 +69,25 @@ label{font-size:11px;color:var(--suave);display:block;margin-bottom:4px;letter-s
     <button onclick="atualizarApp()">Atualizar</button>
     <button onclick="trocarTema()" id="btnTema">☾</button>
   </div>
-  <h1>Filmes</h1>
-  <p>Filmes e vídeos indicados pela casa</p>
+  <h1>Cinema da Casa</h1>
+  <p>Filmes e documentários indicados pela casa</p>
 </header>
 
 <div class="wrap">
   <div style="margin-bottom:14px;display:none" id="btnNovoBox">
-    <button class="btn-ouro" onclick="abrirForm()">+ Indicar filme</button>
+    <button class="btn-ouro" onclick="abrirForm()">+ Indicar filme ou documentário</button>
   </div>
 
   <div class="bloco" id="blocoForm">
     <h3 id="formTitulo">Indicar novo filme</h3>
     <input type="hidden" id="fId">
+    <div class="campo">
+      <label>O que é</label>
+      <select id="fTipo" style="width:100%;background:var(--noite2);border:1px solid var(--borda);color:var(--branco);border-radius:8px;padding:10px 12px;font-family:'Jost',sans-serif;font-size:15px">
+        <option value="filme">Filme</option>
+        <option value="documentario">Documentário</option>
+      </select>
+    </div>
     <div class="campo"><label>Título</label><input id="fTitulo" placeholder="Ex: Nosso Lar"></div>
     <div class="campo"><label>Link do filme (YouTube, Drive…)</label><input id="fLink" placeholder="https://..."></div>
     <div class="campo">
@@ -90,7 +102,7 @@ label{font-size:11px;color:var(--suave);display:block;margin-bottom:4px;letter-s
     </div>
     <div class="campo"><label>Descrição (opcional)</label><textarea id="fDesc" placeholder="Por que a casa indica este filme."></textarea></div>
     <div class="btns">
-      <button class="btn-ouro" onclick="salvarFilme()" id="btnSalvar">Salvar filme</button>
+      <button class="btn-ouro" onclick="salvarFilme()" id="btnSalvar">Salvar</button>
       <button class="btn-vazio" onclick="fecharForm()">Cancelar</button>
     </div>
   </div>
@@ -156,10 +168,26 @@ async function carregar(){
 
 function desenhar(){
   if(!filmes.length){
-    document.getElementById('conteudo').innerHTML='<div class="vazio">Nenhum filme indicado ainda.</div>';
+    document.getElementById('conteudo').innerHTML='<div class="vazio">Nada indicado ainda.</div>';
     return;
   }
-  document.getElementById('conteudo').innerHTML = '<div class="grade">' + filmes.map(f=>`
+  const doces = filmes.filter(f => (f.tipo||'filme') !== 'documentario');
+  const docs  = filmes.filter(f => (f.tipo||'filme') === 'documentario');
+
+  document.getElementById('conteudo').innerHTML =
+      bloco('Filmes', doces, 'Nenhum filme indicado ainda.')
+    + bloco('Documentários', docs, 'Nenhum documentário indicado ainda.');
+}
+
+function bloco(nome, lista, vazio){
+  return '<div class="secao-titulo"><h2>' + nome + '</h2>'
+    + '<span class="conta">' + lista.length + '</span><div class="risco"></div></div>'
+    + (lista.length ? '<div class="grade">' + lista.map(cartao).join('') + '</div>'
+                    : '<div class="vazio">' + vazio + '</div>');
+}
+
+function cartao(f){
+  return `
     <div class="filme">
       <div onclick="assistir('${f.id}')">
         <div class="capa">${f.capa_url
@@ -174,7 +202,7 @@ function desenhar(){
         <button onclick="editarFilme('${f.id}')">editar</button>
         <button class="perigo" onclick="apagarFilme('${f.id}')">apagar</button>
       </div>`:''}
-    </div>`).join('') + '</div>';
+    </div>`;
 }
 
 function assistir(id){
@@ -222,7 +250,8 @@ function abrirForm(){
   document.getElementById('fId').value='';
   ['fTitulo','fLink','fCapa','fDesc'].forEach(i=>document.getElementById(i).value='');
   tirarCapa();
-  document.getElementById('formTitulo').textContent='Indicar novo filme';
+  document.getElementById('fTipo').value='filme';
+  document.getElementById('formTitulo').textContent='Indicar novo filme ou documentário';
   document.getElementById('btnSalvar').textContent='Salvar filme';
   document.getElementById('blocoForm').classList.add('on');
   document.getElementById('fTitulo').focus();
@@ -232,6 +261,7 @@ function fecharForm(){ document.getElementById('blocoForm').classList.remove('on
 function editarFilme(id){
   const f = filmes.find(x=>x.id===id); if(!f) return;
   document.getElementById('fId').value=f.id;
+  document.getElementById('fTipo').value=f.tipo||'filme';
   document.getElementById('fTitulo').value=f.titulo||'';
   document.getElementById('fLink').value=f.link||'';
   document.getElementById('fCapa').value=f.capa_url||'';
@@ -239,7 +269,7 @@ function editarFilme(id){
   capaNova = null;
   document.getElementById('fArquivo').value = '';
   mostrarCapaAtual(f.capa_url);
-  document.getElementById('formTitulo').textContent='Editar filme';
+  document.getElementById('formTitulo').textContent='Editar';
   document.getElementById('btnSalvar').textContent='Salvar alteração';
   document.getElementById('blocoForm').classList.add('on');
   window.scrollTo({top:0,behavior:'smooth'});
@@ -266,6 +296,7 @@ async function salvarFilme(){
   }
 
   const reg = {
+    tipo: document.getElementById('fTipo').value,
     titulo: titulo, link: link,
     capa_url: capa,
     descricao: document.getElementById('fDesc').value.trim() || null
