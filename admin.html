@@ -328,6 +328,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <option value="basico">Básico</option>
       <option value="medio">Médio</option>
       <option value="avancado">Avançado</option>
+      <option value="Meditação">Meditação</option>
       <option value="outros">Outros cursos</option>
     </select>
     <label>Capa do curso (imagem quadrada, opcional)</label>
@@ -663,6 +664,39 @@ async function novoModulo(cursoId) {
   await db.from('modulos').insert({ curso_id: cursoId, titulo });
   carregarCursos(); carregarModulosSelect();
 }
+async function editarModulo(id, tituloAtual) {
+  const titulo = prompt('Título do módulo:', tituloAtual);
+  if (titulo === null || !titulo.trim()) return;
+  await db.from('modulos').update({ titulo: titulo.trim() }).eq('id', id);
+  carregarCursos(); carregarModulosSelect();
+}
+async function moverModulo(id, cursoId, dir) {
+  const c = cursosCache.find(x => x.id === cursoId); if (!c) return;
+  const mods = (c.modulos || []).slice().sort((a,b) => (a.ordem||0) - (b.ordem||0));
+  const i = mods.findIndex(m => m.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= mods.length) return;
+  await db.from('modulos').update({ ordem: j + 1 }).eq('id', mods[i].id);
+  await db.from('modulos').update({ ordem: i + 1 }).eq('id', mods[j].id);
+  carregarCursos();
+}
+async function moverAula(id, moduloId, dir) {
+  let mod = null;
+  cursosCache.forEach(c => (c.modulos||[]).forEach(m => { if (m.id === moduloId) mod = m; }));
+  if (!mod) return;
+  const aulas = (mod.aulas || []).slice().sort((a,b) => (a.ordem||0) - (b.ordem||0));
+  const i = aulas.findIndex(a => a.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= aulas.length) return;
+  await db.from('aulas').update({ ordem: j + 1 }).eq('id', aulas[i].id);
+  await db.from('aulas').update({ ordem: i + 1 }).eq('id', aulas[j].id);
+  carregarCursos();
+}
+function irParaProvas(moduloId) {
+  irPara('provas');
+  const sel = document.getElementById('selModuloProva');
+  sel.value = moduloId;
+  carregarProvasDoModulo();
+  document.getElementById('sec-provas').scrollIntoView({ behavior: 'smooth' });
+}
 async function apagarModulo(id) {
   if (!confirm('Apagar este módulo e suas aulas?')) return;
   await db.from('modulos').delete().eq('id', id);
@@ -727,7 +761,7 @@ async function carregarCursos() {
       <div style="display:flex; gap:14px; align-items:flex-start">
         ${c.capa_url ? `<img src="${c.capa_url}" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:1px solid var(--linha)">` : ''}
         <div style="flex:1">
-          <h3>${escapeHtml(c.titulo)} <span class="selo">${CATEGORIAS[c.categoria] || 'Básico'}</span></h3>
+          <h3>${escapeHtml(c.titulo)} <span class="selo">${CATEGORIAS[c.categoria] || c.categoria || 'Básico'}</span></h3>
           <p class="mudo">${escapeHtml(c.descricao || '')}</p>
         </div>
       </div>
@@ -737,11 +771,17 @@ async function carregarCursos() {
       ${(c.modulos || []).sort((a,b) => a.ordem - b.ordem).map(m => `
         <div style="border-left:2px solid var(--linha); margin:14px 0 0 8px; padding-left:16px">
           <strong class="serif" style="font-size:1.05rem">${escapeHtml(m.titulo)}</strong>
+          <button class="btn btn-mini btn-fantasma" onclick="editarModulo('${m.id}', '${escapeHtml(m.titulo).replace(/'/g,"")}')">Editar</button>
+          <button class="btn btn-mini btn-fantasma" onclick="moverModulo('${m.id}','${c.id}',-1)">&uarr;</button>
+          <button class="btn btn-mini btn-fantasma" onclick="moverModulo('${m.id}','${c.id}',1)">&darr;</button>
           <button class="btn btn-mini btn-fantasma" onclick="abrirModalAula('${m.id}')">+ Aula</button>
+          <button class="btn btn-mini btn-fantasma" onclick="irParaProvas('${m.id}')">Prova</button>
           <button class="btn btn-mini btn-perigo" onclick="apagarModulo('${m.id}')">Apagar</button>
           ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
             <div class="mudo" style="margin:6px 0 0 4px">
               ${a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎'} ${escapeHtml(a.titulo)}
+              <a onclick="moverAula('${a.id}','${m.id}',-1)" style="cursor:pointer;font-size:.78rem"> &uarr;</a>
+              <a onclick="moverAula('${a.id}','${m.id}',1)" style="cursor:pointer;font-size:.78rem"> &darr;</a>
               <a onclick="editarAulaModal('${a.id}')" style="color:var(--ouro-claro,#E8CE7A);cursor:pointer;font-size:.78rem"> editar</a>
               <a onclick="apagarAula('${a.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
             </div>`).join('')}
@@ -783,6 +823,8 @@ async function carregarProvasDoModulo() {
       ${(p.questoes || []).sort((a,b) => a.ordem - b.ordem).map((q, i) => `
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(201,162,39,.08)">
           <strong>${i + 1}.</strong> ${escapeHtml(q.enunciado)}
+          <a onclick="moverQuestao('${q.id}','${p.id}',-1)" style="cursor:pointer;font-size:.78rem"> &uarr;</a>
+          <a onclick="moverQuestao('${q.id}','${p.id}',1)" style="cursor:pointer;font-size:.78rem"> &darr;</a>
           <a onclick="editarQuestao('${q.id}','${p.id}')" style="color:var(--ouro-claro,#E8CE7A);cursor:pointer;font-size:.78rem"> editar</a>
           <a onclick="apagarQuestao('${q.id}','${p.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
           <div class="mudo" style="font-size:.85rem; margin-top:4px">
@@ -831,6 +873,15 @@ async function editarProva(id, tituloAtual, notaAtual) {
   const titulo = prompt('Título da prova:', tituloAtual); if (titulo === null) return;
   const nota = prompt('Nota mínima para aprovação (0 a 100):', notaAtual); if (nota === null) return;
   await db.from('provas').update({ titulo: titulo.trim() || tituloAtual, nota_minima: parseInt(nota) || notaAtual }).eq('id', id);
+  carregarProvasDoModulo();
+}
+async function moverQuestao(id, provaId, dir) {
+  const { data: qs } = await db.from('questoes').select('id, ordem').eq('prova_id', provaId).order('ordem');
+  const lista = qs || [];
+  const i = lista.findIndex(q => q.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= lista.length) return;
+  await db.from('questoes').update({ ordem: j + 1 }).eq('id', lista[i].id);
+  await db.from('questoes').update({ ordem: i + 1 }).eq('id', lista[j].id);
   carregarProvasDoModulo();
 }
 async function apagarProva(id) { if (confirm('Apagar prova?')) { await db.from('provas').delete().eq('id', id); carregarProvasDoModulo(); } }
