@@ -215,6 +215,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="aba" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
   <button class="aba" data-secao="giras" onclick="irPara('giras')">Giras</button>
   <button class="aba" data-secao="agenda" onclick="irPara('agenda')">Agenda</button>
+  <button class="aba" onclick="location.href='filmes.html'">Filmes</button>
   <button class="aba" onclick="location.href='entidades.html'">Entidades</button>
   <button class="aba" onclick="location.href='lembretes.html'">Lembretes</button>
   <button class="aba" onclick="location.href='mensalidade.html'">Mensalidade</button>
@@ -357,6 +358,26 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   </div>
 </div>
 
+<!-- MODAL QUESTÃO -->
+<div class="veu" id="veuQuestao">
+  <div class="modal" style="max-width:560px">
+    <h3 id="tituloModalQuestao">Nova questão</h3>
+    <label>Enunciado</label><textarea id="qEnunciado" style="min-height:70px"></textarea>
+    <label>Alternativa A</label><input id="qA">
+    <label>Alternativa B</label><input id="qB">
+    <label>Alternativa C</label><input id="qC">
+    <label>Alternativa D</label><input id="qD">
+    <label>Resposta correta</label>
+    <select id="qCorreta">
+      <option value="a">A</option><option value="b">B</option>
+      <option value="c">C</option><option value="d">D</option>
+    </select>
+    <button class="btn" onclick="salvarQuestao()">Salvar questão</button>
+    <button class="btn btn-fantasma" onclick="fechar('veuQuestao')">Cancelar</button>
+    <div class="aviso" id="avisoQuestao"></div>
+  </div>
+</div>
+
 <!-- MODAL VER RELATO -->
 <div class="veu" id="veuRelato">
   <div class="modal" style="max-width:640px">
@@ -449,7 +470,21 @@ init();
 async function init() {
   eu = await exigirLogin();
   if (!eu) return;
-  if (eu.role !== 'admin') { window.location.href = 'aluno.html'; return; }
+  if (eu.role !== 'admin' && eu.role !== 'editor') { window.location.href = 'aluno.html'; return; }
+  if (eu.role === 'editor') {
+    // editor só mexe em conteúdo: esconde o resto
+    ['usuarios','giras','agenda'].forEach(s => {
+      const aba = document.querySelector('.aba[data-secao="'+s+'"]');
+      if (aba) aba.style.display = 'none';
+      const sec = document.getElementById('sec-'+s);
+      if (sec) sec.classList.remove('ativa');
+    });
+    document.querySelectorAll('.abas .aba').forEach(b => {
+      const destino = (b.getAttribute('onclick')||'');
+      if (destino.includes('mensalidade.html') || destino.includes('lembretes.html') || destino.includes('entidades.html')) return;
+    });
+    irPara('cursos');
+  }
   carregarUsuarios(); carregarCursos(); carregarModulosSelect(); carregarBiblioteca(); carregarGiras(); carregarEventosAdmin();
 }
 
@@ -477,17 +512,38 @@ async function carregarUsuarios() {
   document.getElementById('vazioUsuarios').style.display = (data || []).length ? 'none' : 'block';
   (data || []).forEach(u => {
     tb.innerHTML += `<tr>
-      <td>${escapeHtml(u.nome)} ${u.role === 'admin' ? '<span class="selo azul">direção</span>' : ''}</td>
+      <td>${escapeHtml(u.nome)} ${u.role === 'admin' ? '<span class="selo azul">direção</span>' : (u.role === 'editor' ? '<span class="selo">editor</span>' : '')}</td>
       <td>${escapeHtml(u.email)}</td>
       <td>${u.ativo ? '<span class="selo verde">liberado</span>' : '<span class="selo vermelho">aguardando</span>'}</td>
       <td>
         <button class="btn btn-mini ${u.ativo ? 'btn-perigo' : ''}" onclick="alternarAcesso('${u.id}', ${u.ativo})">${u.ativo ? 'Bloquear' : 'Liberar'}</button>
         ${u.role !== 'admin' ? `<button class="btn btn-mini" onclick="gerenciarCursos('${u.id}', '${escapeHtml(u.nome).replace(/'/g,"")}')">Cursos</button>` : ''}
         <button class="btn btn-mini btn-fantasma" onclick='editarAluno(${JSON.stringify({id:u.id, nome:u.nome, email:u.email}).replace(/'/g,"&#39;")})'>Editar</button>
+        ${u.id !== eu.id ? `<select onchange="mudarNivel('${u.id}', this.value)" style="width:auto;padding:6px 8px;font-size:.78rem">
+          <option value="aluno" ${(!u.role||u.role==='aluno')?'selected':''}>Aluno</option>
+          <option value="editor" ${u.role==='editor'?'selected':''}>Editor</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Direção</option>
+        </select>
+        <button class="btn btn-mini btn-perigo" onclick="excluirUsuario('${u.id}', '${escapeHtml(u.nome||u.email).replace(/'/g,"")}')">Excluir</button>` : ''}
       </td>
     </tr>`;
   });
   carregarPedidosSenha();
+}
+async function mudarNivel(id, role) {
+  const nomes = { aluno:'Aluno', editor:'Editor (pode mexer em cursos, provas, biblioteca e filmes)', admin:'Direção (acesso total)' };
+  if (!confirm('Mudar o nível deste usuário para: ' + nomes[role] + '?')) { carregarUsuarios(); return; }
+  const { error } = await db.from('profiles').update({ role }).eq('id', id);
+  if (error) alert('Não deu: ' + error.message);
+  carregarUsuarios();
+}
+async function excluirUsuario(id, nome) {
+  if (!confirm('Excluir "' + nome + '"?\n\nIsso apaga o cadastro e TODOS os dados dele no app (entidades, provas, mensalidades, lembretes). Não tem como desfazer.')) return;
+  if (!confirm('Tem certeza mesmo? Última chance.')) return;
+  const { error } = await db.from('profiles').delete().eq('id', id);
+  if (error) { alert('Não deu: ' + error.message); return; }
+  alert('Excluído do app. Para apagar de vez o login (e-mail/senha), remova também em Authentication > Users no Supabase.');
+  carregarUsuarios();
 }
 async function alternarAcesso(id, ativo) {
   await db.from('profiles').update({ ativo: !ativo }).eq('id', id);
@@ -612,11 +668,24 @@ async function apagarModulo(id) {
   await db.from('modulos').delete().eq('id', id);
   carregarCursos(); carregarModulosSelect();
 }
+let aulaEditId = null;
 function abrirModalAula(moduloId) {
-  moduloDaAula = moduloId;
+  moduloDaAula = moduloId; aulaEditId = null;
   ['aulaTitulo','aulaVideo','aulaConteudo'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('aulaPdf').value = '';
   document.getElementById('aulaTipo').value = 'video'; trocarTipoAula();
+  document.getElementById('veuAula').classList.add('aberto');
+}
+function editarAulaModal(aulaId) {
+  let aula = null;
+  cursosCache.forEach(c => (c.modulos||[]).forEach(m => (m.aulas||[]).forEach(x => { if (x.id === aulaId) { aula = x; moduloDaAula = m.id; } })));
+  if (!aula) return;
+  aulaEditId = aula.id;
+  document.getElementById('aulaTitulo').value = aula.titulo || '';
+  document.getElementById('aulaTipo').value = aula.tipo || 'video'; trocarTipoAula();
+  document.getElementById('aulaVideo').value = aula.video_url || '';
+  document.getElementById('aulaConteudo').value = aula.conteudo || '';
+  document.getElementById('aulaPdf').value = '';
   document.getElementById('veuAula').classList.add('aberto');
 }
 function trocarTipoAula() {
@@ -638,7 +707,8 @@ async function salvarAula() {
       aviso('avisoAula', 'ok', 'Enviando arquivo...');
       dados.arquivo_url = await uploadPdf(f, 'aulas');
     }
-    await db.from('aulas').insert(dados);
+    if (aulaEditId) await db.from('aulas').update(dados).eq('id', aulaEditId);
+    else await db.from('aulas').insert(dados);
     fechar('veuAula'); carregarCursos();
   } catch (e) { aviso('avisoAula', 'erro', 'Erro ao salvar: ' + e.message); }
 }
@@ -672,6 +742,7 @@ async function carregarCursos() {
           ${(m.aulas || []).sort((a,b) => a.ordem - b.ordem).map(a => `
             <div class="mudo" style="margin:6px 0 0 4px">
               ${a.tipo === 'video' ? '▶' : a.tipo === 'pdf' ? '📄' : '✎'} ${escapeHtml(a.titulo)}
+              <a onclick="editarAulaModal('${a.id}')" style="color:var(--ouro-claro,#E8CE7A);cursor:pointer;font-size:.78rem"> editar</a>
               <a onclick="apagarAula('${a.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
             </div>`).join('')}
         </div>`).join('')}
@@ -700,15 +771,19 @@ async function carregarProvasDoModulo() {
   if (!moduloId) { el.innerHTML = ''; return; }
   const { data: provas } = await db.from('provas').select('*, questoes(*)').eq('modulo_id', moduloId);
   if (!provas || !provas.length) { el.innerHTML = '<p class="vazio">Este módulo ainda não tem prova.</p>'; return; }
+  questoesCache = {};
+  provas.forEach(p => (p.questoes || []).forEach(q => questoesCache[q.id] = q));
   el.innerHTML = provas.map(p => `
     <div class="cartao">
       <h3>${escapeHtml(p.titulo)} <span class="selo">mínimo ${p.nota_minima}%</span></h3>
       <p class="mudo">${(p.questoes || []).length} questão(ões)</p>
       <button class="btn btn-mini" onclick="novaQuestao('${p.id}')">+ Questão</button>
+      <button class="btn btn-mini btn-fantasma" onclick="editarProva('${p.id}', '${escapeHtml(p.titulo).replace(/'/g,"")}', ${p.nota_minima})">Editar prova</button>
       <button class="btn btn-mini btn-perigo" onclick="apagarProva('${p.id}')">Apagar prova</button>
       ${(p.questoes || []).sort((a,b) => a.ordem - b.ordem).map((q, i) => `
         <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(201,162,39,.08)">
           <strong>${i + 1}.</strong> ${escapeHtml(q.enunciado)}
+          <a onclick="editarQuestao('${q.id}','${p.id}')" style="color:var(--ouro-claro,#E8CE7A);cursor:pointer;font-size:.78rem"> editar</a>
           <a onclick="apagarQuestao('${q.id}','${p.id}')" style="color:var(--perigo);cursor:pointer;font-size:.78rem"> remover</a>
           <div class="mudo" style="font-size:.85rem; margin-top:4px">
             a) ${escapeHtml(q.opcao_a)} &nbsp; b) ${escapeHtml(q.opcao_b)} &nbsp; c) ${escapeHtml(q.opcao_c)} &nbsp; d) ${escapeHtml(q.opcao_d)}
@@ -717,15 +792,45 @@ async function carregarProvasDoModulo() {
         </div>`).join('')}
     </div>`).join('');
 }
-async function novaQuestao(provaId) {
-  const enunciado = prompt('Enunciado da questão:'); if (!enunciado) return;
-  const a = prompt('Alternativa A:'); if (a === null) return;
-  const b = prompt('Alternativa B:'); if (b === null) return;
-  const c = prompt('Alternativa C:'); if (c === null) return;
-  const d = prompt('Alternativa D:'); if (d === null) return;
-  const correta = (prompt('Qual é a correta? (a, b, c ou d)') || '').toLowerCase().trim();
-  if (!['a','b','c','d'].includes(correta)) return alert('Resposta correta inválida.');
-  await db.from('questoes').insert({ prova_id: provaId, enunciado, opcao_a: a, opcao_b: b, opcao_c: c, opcao_d: d, correta });
+let questaoProvaId = null, questaoEditId = null, questoesCache = {};
+function novaQuestao(provaId) {
+  questaoProvaId = provaId; questaoEditId = null;
+  ['qEnunciado','qA','qB','qC','qD'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('qCorreta').value = 'a';
+  document.getElementById('tituloModalQuestao').textContent = 'Nova questão';
+  document.getElementById('veuQuestao').classList.add('aberto');
+}
+function editarQuestao(qId, provaId) {
+  const q = questoesCache[qId]; if (!q) return;
+  questaoProvaId = provaId; questaoEditId = qId;
+  document.getElementById('qEnunciado').value = q.enunciado || '';
+  document.getElementById('qA').value = q.opcao_a || '';
+  document.getElementById('qB').value = q.opcao_b || '';
+  document.getElementById('qC').value = q.opcao_c || '';
+  document.getElementById('qD').value = q.opcao_d || '';
+  document.getElementById('qCorreta').value = q.correta || 'a';
+  document.getElementById('tituloModalQuestao').textContent = 'Editar questão';
+  document.getElementById('veuQuestao').classList.add('aberto');
+}
+async function salvarQuestao() {
+  const dados = {
+    enunciado: document.getElementById('qEnunciado').value.trim(),
+    opcao_a: document.getElementById('qA').value.trim(),
+    opcao_b: document.getElementById('qB').value.trim(),
+    opcao_c: document.getElementById('qC').value.trim(),
+    opcao_d: document.getElementById('qD').value.trim(),
+    correta: document.getElementById('qCorreta').value
+  };
+  if (!dados.enunciado || !dados.opcao_a || !dados.opcao_b || !dados.opcao_c || !dados.opcao_d)
+    return aviso('avisoQuestao', 'erro', 'Preencha o enunciado e as quatro alternativas.');
+  if (questaoEditId) await db.from('questoes').update(dados).eq('id', questaoEditId);
+  else { dados.prova_id = questaoProvaId; await db.from('questoes').insert(dados); }
+  fechar('veuQuestao'); carregarProvasDoModulo();
+}
+async function editarProva(id, tituloAtual, notaAtual) {
+  const titulo = prompt('Título da prova:', tituloAtual); if (titulo === null) return;
+  const nota = prompt('Nota mínima para aprovação (0 a 100):', notaAtual); if (nota === null) return;
+  await db.from('provas').update({ titulo: titulo.trim() || tituloAtual, nota_minima: parseInt(nota) || notaAtual }).eq('id', id);
   carregarProvasDoModulo();
 }
 async function apagarProva(id) { if (confirm('Apagar prova?')) { await db.from('provas').delete().eq('id', id); carregarProvasDoModulo(); } }
