@@ -78,7 +78,16 @@ label{font-size:11px;color:var(--suave);display:block;margin-bottom:4px;letter-s
     <input type="hidden" id="fId">
     <div class="campo"><label>Título</label><input id="fTitulo" placeholder="Ex: Nosso Lar"></div>
     <div class="campo"><label>Link do filme (YouTube, Drive…)</label><input id="fLink" placeholder="https://..."></div>
-    <div class="campo"><label>Link da imagem da capa (opcional)</label><input id="fCapa" placeholder="https://... (endereço de uma imagem)"></div>
+    <div class="campo">
+      <label>Capa do filme (opcional)</label>
+      <input type="file" id="fArquivo" accept="image/*" onchange="preverCapa()">
+      <div id="previaBox" style="display:none;margin-top:10px;align-items:center;gap:12px">
+        <img id="previa" style="width:70px;height:105px;object-fit:cover;border-radius:8px;border:1px solid var(--borda)">
+        <button type="button" class="btn-vazio" style="padding:7px 12px;font-size:13px" onclick="tirarCapa()">Tirar capa</button>
+      </div>
+      <input type="hidden" id="fCapa">
+      <div style="font-size:12px;color:var(--suave);margin-top:6px">Escolha uma imagem do celular ou do computador. Fica melhor em pé, tipo cartaz.</div>
+    </div>
     <div class="campo"><label>Descrição (opcional)</label><textarea id="fDesc" placeholder="Por que a casa indica este filme."></textarea></div>
     <div class="btns">
       <button class="btn-ouro" onclick="salvarFilme()" id="btnSalvar">Salvar filme</button>
@@ -173,9 +182,46 @@ function assistir(id){
   if(f && f.link) window.open(f.link, '_blank');
 }
 
+let capaNova = null;   // arquivo escolhido, ainda não enviado
+
+function preverCapa(){
+  const f = document.getElementById('fArquivo').files[0];
+  if(!f) return;
+  if(!f.type.startsWith('image/')){ aviso('Escolha uma imagem.'); document.getElementById('fArquivo').value=''; return; }
+  if(f.size > 5*1024*1024){ aviso('Imagem muito pesada. Use uma até 5 MB.'); document.getElementById('fArquivo').value=''; return; }
+  capaNova = f;
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    document.getElementById('previa').src = e.target.result;
+    document.getElementById('previaBox').style.display = 'flex';
+  };
+  leitor.readAsDataURL(f);
+}
+function tirarCapa(){
+  capaNova = null;
+  document.getElementById('fArquivo').value = '';
+  document.getElementById('fCapa').value = '';
+  document.getElementById('previaBox').style.display = 'none';
+}
+function mostrarCapaAtual(url){
+  if(url){
+    document.getElementById('previa').src = url;
+    document.getElementById('previaBox').style.display = 'flex';
+  } else {
+    document.getElementById('previaBox').style.display = 'none';
+  }
+}
+async function enviarCapa(file){
+  const nome = 'capas-filme/' + Date.now() + '_' + file.name.replace(/[^\w.\-]/g,'_');
+  const { error } = await db.storage.from('materiais').upload(nome, file);
+  if(error) throw error;
+  return db.storage.from('materiais').getPublicUrl(nome).data.publicUrl;
+}
+
 function abrirForm(){
   document.getElementById('fId').value='';
   ['fTitulo','fLink','fCapa','fDesc'].forEach(i=>document.getElementById(i).value='');
+  tirarCapa();
   document.getElementById('formTitulo').textContent='Indicar novo filme';
   document.getElementById('btnSalvar').textContent='Salvar filme';
   document.getElementById('blocoForm').classList.add('on');
@@ -190,6 +236,9 @@ function editarFilme(id){
   document.getElementById('fLink').value=f.link||'';
   document.getElementById('fCapa').value=f.capa_url||'';
   document.getElementById('fDesc').value=f.descricao||'';
+  capaNova = null;
+  document.getElementById('fArquivo').value = '';
+  mostrarCapaAtual(f.capa_url);
   document.getElementById('formTitulo').textContent='Editar filme';
   document.getElementById('btnSalvar').textContent='Salvar alteração';
   document.getElementById('blocoForm').classList.add('on');
@@ -202,15 +251,32 @@ async function salvarFilme(){
   if(!titulo){ aviso('Escreva o título.'); return; }
   if(!link){ aviso('Cole o link do filme.'); return; }
   const id = document.getElementById('fId').value;
+  const btn = document.getElementById('btnSalvar');
+  const textoBtn = btn.textContent;
+
+  let capa = document.getElementById('fCapa').value.trim() || null;
+  if(capaNova){
+    btn.disabled = true; btn.textContent = 'Enviando capa…';
+    try{ capa = await enviarCapa(capaNova); }
+    catch(e){
+      btn.disabled = false; btn.textContent = textoBtn;
+      aviso('Não deu pra enviar a capa: ' + e.message);
+      return;
+    }
+  }
+
   const reg = {
     titulo: titulo, link: link,
-    capa_url: document.getElementById('fCapa').value.trim() || null,
+    capa_url: capa,
     descricao: document.getElementById('fDesc').value.trim() || null
   };
+  btn.textContent = 'Salvando…';
   let erro;
   if(id){ ({error:erro} = await db.from('filmes').update(reg).eq('id',id)); }
   else  { ({error:erro} = await db.from('filmes').insert(reg)); }
+  btn.disabled = false; btn.textContent = textoBtn;
   if(erro){ aviso('Não salvou: '+erro.message); return; }
+  capaNova = null;
   fecharForm(); aviso('Filme guardado.'); await carregar();
 }
 
