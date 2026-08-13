@@ -262,14 +262,33 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Biblioteca</h2>
     <div class="firmeza"><span class="estrela">✦</span></div>
     <div class="cartao">
-      <h3 id="bibFormTitulo">Indicar novo livro / material</h3>
+      <h3 id="bibFormTitulo">Indicar novo livro</h3>
       <input type="hidden" id="bibEditId" value="">
-      <label>Título</label><input id="bibTitulo">
-      <label>Autor</label><input id="bibAutor">
-      <label>Descrição</label><textarea id="bibDesc"></textarea>
-      <label>Capa do livro (imagem, opcional)</label><input type="file" id="bibCapa" accept="image/*">
-      <label>Arquivo PDF (opcional)</label><input type="file" id="bibArquivo" accept=".pdf">
-      <label>Ou link externo (opcional)</label><input id="bibLink" placeholder="https://...">
+
+      <label>Nome do livro</label><input id="bibTitulo" placeholder="Ex: O Livro dos Espíritos">
+      <label>Autor (opcional)</label><input id="bibAutor" placeholder="Ex: Allan Kardec">
+
+      <label>Link do livro</label>
+      <input id="bibLink" placeholder="https://... (onde ler ou comprar)">
+      <p class="mudo" style="font-size:.76rem; margin:4px 0 12px">Cole o endereço da loja, do site ou do arquivo. O médium toca no livro e vai direto pra lá.</p>
+
+      <label>Capa do livro (foto)</label>
+      <input type="file" id="bibCapa" accept="image/*" onchange="preverCapaLivro()">
+      <div id="bibPreviaBox" style="display:none; align-items:center; gap:12px; margin-top:10px">
+        <img id="bibPrevia" style="width:64px; height:96px; object-fit:cover; border-radius:8px; border:1px solid var(--linha)">
+        <button type="button" class="btn btn-mini btn-fantasma" onclick="tirarCapaLivro()">Tirar capa</button>
+      </div>
+      <p class="mudo" style="font-size:.76rem; margin:6px 0 12px">Escolha uma imagem do celular ou do computador.</p>
+
+      <label>Descrição (opcional)</label><textarea id="bibDesc" placeholder="Por que a casa indica este livro."></textarea>
+
+      <details style="margin:12px 0">
+        <summary style="cursor:pointer; color:var(--oxala-2); font-size:.84rem">Tem o arquivo PDF? (opcional)</summary>
+        <div style="margin-top:10px">
+          <input type="file" id="bibArquivo" accept=".pdf">
+          <p class="mudo" style="font-size:.76rem; margin-top:6px">Se enviar o PDF, o livro abre no leitor de dentro do app, com marcações.</p>
+        </div>
+      </details>
       <button class="btn" id="bibBtnSalvar" onclick="salvarLivro()">Adicionar à biblioteca</button>
       <button class="btn btn-fantasma" id="bibBtnCancelar" style="display:none" onclick="cancelarEdicaoLivro()">Cancelar edição</button>
       <div class="aviso" id="avisoBib"></div>
@@ -919,6 +938,34 @@ async function salvarLivro() {
   } catch (e) { aviso('avisoBib', 'erro', 'Erro: ' + e.message); }
 }
 
+function preverCapaLivro() {
+  const f = document.getElementById('bibCapa').files[0];
+  if (!f) return;
+  if (f.size > 5 * 1024 * 1024) {
+    aviso('avisoBib', 'erro', 'Imagem muito pesada. Use uma até 5 MB.');
+    document.getElementById('bibCapa').value = '';
+    return;
+  }
+  const leitor = new FileReader();
+  leitor.onload = e => {
+    document.getElementById('bibPrevia').src = e.target.result;
+    document.getElementById('bibPreviaBox').style.display = 'flex';
+  };
+  leitor.readAsDataURL(f);
+}
+function tirarCapaLivro() {
+  document.getElementById('bibCapa').value = '';
+  document.getElementById('bibPreviaBox').style.display = 'none';
+}
+function mostrarCapaLivro(url) {
+  if (url) {
+    document.getElementById('bibPrevia').src = url;
+    document.getElementById('bibPreviaBox').style.display = 'flex';
+  } else {
+    document.getElementById('bibPreviaBox').style.display = 'none';
+  }
+}
+
 function editarLivro(id) {
   const l = livrosCache.find(x => x.id === id);
   if (!l) return;
@@ -929,6 +976,7 @@ function editarLivro(id) {
   document.getElementById('bibLink').value = l.link || '';
   document.getElementById('bibCapa').value = '';
   document.getElementById('bibArquivo').value = '';
+  mostrarCapaLivro(l.capa_url);
   document.getElementById('bibFormTitulo').textContent = 'Editar livro';
   document.getElementById('bibBtnSalvar').textContent = 'Salvar alterações';
   document.getElementById('bibBtnCancelar').style.display = 'inline-block';
@@ -938,11 +986,12 @@ function editarLivro(id) {
 function cancelarEdicaoLivro() {
   document.getElementById('bibEditId').value = '';
   ['bibTitulo','bibAutor','bibDesc','bibLink'].forEach(i => document.getElementById(i).value = '');
-  document.getElementById('bibCapa').value = '';
+  tirarCapaLivro();
   document.getElementById('bibArquivo').value = '';
-  document.getElementById('bibFormTitulo').textContent = 'Indicar novo livro / material';
+  document.getElementById('bibFormTitulo').textContent = 'Indicar novo livro';
   document.getElementById('bibBtnSalvar').textContent = 'Adicionar à biblioteca';
   document.getElementById('bibBtnCancelar').style.display = 'none';
+  const av = document.getElementById('avisoBib'); if (av) { av.className = 'aviso'; av.textContent = ''; }
 }
 
 async function apagarLivro(id) { if (confirm('Excluir este livro da biblioteca?')) { await db.from('biblioteca').delete().eq('id', id); carregarBiblioteca(); } }
