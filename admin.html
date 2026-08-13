@@ -347,7 +347,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <option value="basico">Básico</option>
       <option value="medio">Médio</option>
       <option value="avancado">Avançado</option>
-      <option value="Meditação">Meditação</option>
+      <option value="complementar">Cursos complementares</option>
       <option value="outros">Outros cursos</option>
     </select>
     <label>Capa do curso (imagem quadrada, opcional)</label>
@@ -621,7 +621,7 @@ async function gerenciarCursos(alunoId, nome) {
     <label style="display:flex; gap:10px; align-items:center; text-transform:none; letter-spacing:0; color:var(--oxala); margin:8px 0; cursor:pointer">
       <input type="checkbox" class="acChk" value="${c.id}" style="width:auto" ${liberados.has(c.id) ? 'checked' : ''}
         onchange="alternarCursoAluno('${c.id}', this.checked)">
-      ${escapeHtml(c.titulo)} <span class="selo" style="font-size:.62rem">${CATEGORIAS[c.categoria] || 'Básico'}</span>
+      ${escapeHtml(c.titulo)} <span class="selo" style="font-size:.62rem">${CATEGORIAS[c.categoria] || c.categoria || 'Básico'}</span>
     </label>`).join('') || '<p class="mudo">Nenhum curso criado ainda.</p>';
   document.getElementById('veuAcCursos').classList.add('aberto');
 }
@@ -635,7 +635,7 @@ async function alternarCursoAluno(cursoId, liberar) {
 
 /* ==================== CURSOS ==================== */
 let cursosCache = [];
-const CATEGORIAS = { basico: 'Básico', medio: 'Médio', avancado: 'Avançado', outros: 'Outros cursos' };
+const CATEGORIAS = { basico: 'Básico', medio: 'Médio', avancado: 'Avançado', complementar: 'Complementar', outros: 'Outros cursos' };
 
 function abrirModalCurso() {
   document.getElementById('cursoEditId').value = '';
