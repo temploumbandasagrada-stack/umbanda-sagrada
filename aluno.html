@@ -290,14 +290,21 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 /* Calendário da agenda */
 .cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .cal-cab { text-align: center; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ouro); padding: 4px 0; }
-.cal-dia { aspect-ratio: 1; border: 1px solid var(--linha); border-radius: 8px; padding: 4px; font-size: .78rem; position: relative; background: var(--altar); overflow: hidden; }
+.cal-dia { min-height: 74px; border: 1px solid var(--linha); border-radius: 8px; padding: 4px; font-size: .78rem; position: relative; background: var(--altar); overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
 .cal-dia.vazio { border-color: transparent; background: transparent; }
 .cal-dia.tem-evento { cursor: pointer; border-color: var(--ouro); }
 .cal-dia .num { color: var(--oxala-2); }
 .cal-dia.hoje { box-shadow: 0 0 0 1px var(--ouro) inset; }
-.cal-dia .ponto { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--ouro); }
 .cal-dia .qtd { position: absolute; top: 3px; right: 5px; font-size: .6rem; color: var(--ouro-claro); }
-@media (max-width: 640px) { .cal-dia { font-size: .7rem; padding: 2px; } .cal-cab { font-size: .58rem; } }
+.cal-evs { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; overflow: hidden; }
+.cal-ev { background: rgba(201,162,39,.16); border-left: 2px solid var(--ouro); border-radius: 3px; padding: 1px 4px; font-size: .58rem; line-height: 1.25; color: var(--oxala); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-mais { font-size: .55rem; color: var(--ouro-claro); padding-left: 3px; }
+@media (max-width: 640px) {
+  .cal-dia { font-size: .7rem; padding: 3px; min-height: 66px; }
+  .cal-cab { font-size: .58rem; }
+  .cal-ev { font-size: .52rem; padding: 1px 3px; border-left-width: 2px; }
+  .cal-mais { font-size: .5rem; }
+}
 
 /* Faixas de cursos (Netflix) */
 .faixa { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 12px; scroll-snap-type: x mandatory; }
@@ -648,6 +655,7 @@ const CATEGORIAS = [
   { chave: 'basico', nome: 'Básico' },
   { chave: 'medio', nome: 'Médio' },
   { chave: 'avancado', nome: 'Avançado' },
+  { chave: 'complementar', nome: 'Cursos complementares' },
   { chave: 'outros', nome: 'Outros cursos' }
 ];
 let cursosCache = [], acessosSet = new Set(), aprovadasSet = new Set(), cursoAbertoId = null;
@@ -1103,15 +1111,21 @@ function renderCalendario(mesAno, eventos) {
     const dataStr = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const evs = porDia[dataStr] || [];
     const tem = evs.length > 0;
+    const mostrar = evs.slice(0, 2);
+    const sobra = evs.length - mostrar.length;
     celulas += `
       <div class="cal-dia ${tem ? 'tem-evento' : ''} ${dataStr === hoje ? 'hoje' : ''}"
            ${tem ? `onclick='abrirDiaAgenda(${JSON.stringify(dataStr)})'` : ''}>
         <span class="num">${d}</span>
-        ${tem ? `<span class="qtd">${evs.length}</span><span class="ponto"></span>` : ''}
+        ${tem ? `<span class="qtd">${evs.length}</span>
+          <div class="cal-evs">
+            ${mostrar.map(e => `<div class="cal-ev" title="${escapeHtml(e.titulo)}">${escapeHtml(e.titulo)}</div>`).join('')}
+            ${sobra > 0 ? `<div class="cal-mais">+${sobra}</div>` : ''}
+          </div>` : ''}
       </div>`;
   }
   return `<div class="cal-grade">${cab}${celulas}</div>
-    <p class="mudo" style="font-size:.78rem; margin-top:10px; text-align:center">Toque num dia marcado para ver os eventos.</p>`;
+    <p class="mudo" style="font-size:.78rem; margin-top:10px; text-align:center">Toque num dia marcado para ver os detalhes.</p>`;
 }
 
 function abrirDiaAgenda(dataStr) {
