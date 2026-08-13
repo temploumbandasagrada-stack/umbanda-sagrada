@@ -298,6 +298,8 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 .cal-dia .qtd { position: absolute; top: 3px; right: 5px; font-size: .6rem; color: var(--ouro-claro); }
 .cal-evs { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; overflow: hidden; }
 .cal-ev { background: rgba(201,162,39,.16); border-left: 2px solid var(--ouro); border-radius: 3px; padding: 1px 4px; font-size: .58rem; line-height: 1.25; color: var(--oxala); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev.meu { background: rgba(124,155,196,.16); border-left-color: #7C9BC4; }
+.cal-ev.feito { opacity: .45; text-decoration: line-through; }
 .cal-mais { font-size: .55rem; color: var(--ouro-claro); padding-left: 3px; }
 @media (max-width: 640px) {
   .cal-dia { font-size: .7rem; padding: 3px; min-height: 66px; }
@@ -404,7 +406,9 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <h2>Agenda</h2>
     <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px">
+      <button class="btn btn-mini btn-fantasma" onclick="irMes(-1)" title="Mês anterior">&larr;</button>
       <select id="agMes" onchange="renderAgenda()" style="width:auto"></select>
+      <button class="btn btn-mini btn-fantasma" onclick="irMes(1)" title="Próximo mês">&rarr;</button>
       <div style="display:flex; gap:4px">
         <button class="btn btn-mini" id="agBtnCal" onclick="modoAgenda('calendario')">Calendário</button>
         <button class="btn btn-mini btn-fantasma" id="agBtnLista" onclick="modoAgenda('lista')">Lista</button>
@@ -1063,17 +1067,46 @@ async function carregarAgenda() {
   const { data: c } = await db.from('eventos_ciente').select('evento_id').eq('aluno_id', eu.id);
   cienteSet = new Set((c || []).map(x => x.evento_id));
 
-  // preenche o seletor de mês (só meses que têm evento, + mês atual)
+  // meus lembretes pessoais também aparecem na agenda
+  try {
+    const { data: lp } = await db.from('lembretes_pessoais').select('*').eq('user_id', eu.id);
+    (lp || []).forEach(l => eventosMeus.push({
+      id: 'lp-' + l.id,
+      titulo: l.titulo,
+      descricao: l.descricao,
+      data: String(l.data).slice(0, 10),
+      hora: l.hora,
+      pessoal: true,
+      concluido: l.concluido
+    }));
+  } catch (e) { /* se a tabela ainda não existir, segue sem lembretes */ }
+
+  eventosMeus.sort((a, b) => a.data.localeCompare(b.data));
+
+  // seletor de mês: todos os meses do ano atual e do próximo,
+  // mais qualquer mês que já tenha algo marcado
   const meses = new Set(eventosMeus.map(e => e.data.slice(0, 7)));
-  const agora = new Date(); const atual = agora.toISOString().slice(0, 7);
-  meses.add(atual);
+  const agora = new Date();
+  const atual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  for (let ano = agora.getFullYear(); ano <= agora.getFullYear() + 1; ano++) {
+    for (let m = 1; m <= 12; m++) meses.add(`${ano}-${String(m).padStart(2, '0')}`);
+  }
   const ordenados = Array.from(meses).sort();
   const sel = document.getElementById('agMes');
   sel.innerHTML = ordenados.map(m => {
     const [ano, mes] = m.split('-');
-    return `<option value="${m}">${MESES[parseInt(mes)-1]} de ${ano}</option>`;
+    const qtd = eventosMeus.filter(e => e.data.slice(0, 7) === m).length;
+    return `<option value="${m}">${MESES[parseInt(mes)-1]} de ${ano}${qtd ? ' (' + qtd + ')' : ''}</option>`;
   }).join('');
   sel.value = ordenados.includes(atual) ? atual : ordenados[0];
+  renderAgenda();
+}
+
+function irMes(passo) {
+  const sel = document.getElementById('agMes');
+  const i = sel.selectedIndex + passo;
+  if (i < 0 || i >= sel.options.length) return;
+  sel.selectedIndex = i;
   renderAgenda();
 }
 
@@ -1092,7 +1125,7 @@ function renderAgenda() {
 }
 
 function renderLista(eventos) {
-  if (!eventos.length) return '<p class="vazio">Nenhum evento neste mês.</p>';
+  if (!eventos.length) return '<p class="vazio">Nada marcado neste mês.</p>';
   return eventos.sort((a,b) => a.data.localeCompare(b.data)).map(e => cartaoEvento(e)).join('');
 }
 
@@ -1119,13 +1152,17 @@ function renderCalendario(mesAno, eventos) {
         <span class="num">${d}</span>
         ${tem ? `<span class="qtd">${evs.length}</span>
           <div class="cal-evs">
-            ${mostrar.map(e => `<div class="cal-ev" title="${escapeHtml(e.titulo)}">${escapeHtml(e.titulo)}</div>`).join('')}
+            ${mostrar.map(e => `<div class="cal-ev ${e.pessoal ? 'meu' : ''} ${e.concluido ? 'feito' : ''}" title="${escapeHtml(e.titulo)}">${escapeHtml(e.titulo)}</div>`).join('')}
             ${sobra > 0 ? `<div class="cal-mais">+${sobra}</div>` : ''}
           </div>` : ''}
       </div>`;
   }
   return `<div class="cal-grade">${cab}${celulas}</div>
-    <p class="mudo" style="font-size:.78rem; margin-top:10px; text-align:center">Toque num dia marcado para ver os detalhes.</p>`;
+    <p class="mudo" style="font-size:.78rem; margin-top:10px; text-align:center">
+      Toque num dia marcado para ver os detalhes. &nbsp;
+      <span style="border-left:8px solid var(--ouro); padding-left:5px">casa</span> &nbsp;
+      <span style="border-left:8px solid #7C9BC4; padding-left:5px">meus lembretes</span>
+    </p>`;
 }
 
 function abrirDiaAgenda(dataStr) {
@@ -1136,10 +1173,27 @@ function abrirDiaAgenda(dataStr) {
 }
 
 function cartaoEvento(e) {
+  const data = new Date(e.data + 'T12:00').toLocaleDateString('pt-BR');
+  const hora = e.hora ? ' às ' + String(e.hora).slice(0, 5) : '';
+
+  if (e.pessoal) {
+    return `
+    <div class="cartao" style="border-left:3px solid #7C9BC4">
+      <h3 style="${e.concluido ? 'text-decoration:line-through; opacity:.6' : ''}">
+        ${escapeHtml(e.titulo)} <span class="selo">${data}${hora}</span>
+      </h3>
+      ${e.descricao ? `<p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(e.descricao)}</p>` : ''}
+      <p class="mudo" style="font-size:.76rem; margin-top:10px">
+        Seu lembrete pessoal${e.concluido ? ' · concluído' : ''} ·
+        <a href="lembretes.html" style="color:var(--ouro-claro,#E8CE7A)">abrir lembretes</a>
+      </p>
+    </div>`;
+  }
+
   const jaCiente = cienteSet.has(e.id);
   return `
     <div class="cartao">
-      <h3>${escapeHtml(e.titulo)} <span class="selo azul">${new Date(e.data + 'T12:00').toLocaleDateString('pt-BR')}</span></h3>
+      <h3>${escapeHtml(e.titulo)} <span class="selo azul">${data}</span></h3>
       ${e.descricao ? `<p style="white-space:pre-wrap; margin-top:8px">${escapeHtml(e.descricao)}</p>` : ''}
       ${jaCiente
         ? `<p class="selo verde" style="margin-top:10px">✔ Você deu ciente</p>`
