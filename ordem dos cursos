@@ -1,0 +1,52 @@
+-- ============================================================
+-- CASA DE ESTUDO — POSIÇÃO DOS CURSOS
+-- Cria a coluna "ordem" na tabela cursos e libera a edição
+-- para admin e editor.
+--
+-- Rode no SQL Editor do Supabase. Pode rodar mais de uma vez.
+-- ============================================================
+
+-- 1. Coluna de posição
+alter table cursos add column if not exists ordem int;
+
+-- 2. Numera o que já existe, agrupado por categoria,
+--    mantendo a ordem alfabética atual como ponto de partida
+with numerados as (
+  select id, row_number() over (
+    partition by coalesce(categoria, 'basico')
+    order by titulo
+  ) as pos
+  from cursos
+  where ordem is null
+)
+update cursos c
+set ordem = n.pos
+from numerados n
+where c.id = n.id;
+
+-- 3. Função auxiliar (recriada, caso ainda não exista)
+create or replace function public.pode_editar_prova()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from profiles
+    where id = auth.uid()
+      and role in ('admin','editor')
+  );
+$$;
+
+-- 4. Permissão para reordenar
+alter table cursos enable row level security;
+
+drop policy if exists "cursos_leitura" on cursos;
+create policy "cursos_leitura" on cursos
+  for select using (auth.uid() is not null);
+
+drop policy if exists "cursos_editar" on cursos;
+create policy "cursos_editar" on cursos
+  for update using (public.pode_editar_prova())
+  with check (public.pode_editar_prova());
