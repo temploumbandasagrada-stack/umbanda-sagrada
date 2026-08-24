@@ -48,6 +48,19 @@ button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-w
 .resumo strong{display:block;font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--ouro-claro);font-weight:600}
 .aviso{display:none;padding:11px 14px;border-radius:8px;font-size:.9rem;margin:12px 0}
 .aviso.erro{display:block;background:rgba(196,106,106,.14);border:1px solid rgba(196,106,106,.45);color:var(--perigo)}
+.abas{display:flex;gap:8px;margin:14px 0}
+.abas button{flex:1}
+.abas button.ativa{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-weight:500}
+details.gira{background:var(--altar);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+details.gira summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details.gira summary::-webkit-details-marker{display:none}
+details.gira summary .tt{flex:1;font-family:'Cormorant Garamond',serif;font-size:1.12rem;min-width:150px}
+details.gira[open] summary{border-bottom:1px solid var(--linha);padding-bottom:10px;margin-bottom:10px}
+.bloco{background:var(--altar-2);border-radius:10px;padding:11px 13px;margin:9px 0}
+.bloco h5{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--ouro-claro);font-weight:600}
+.campo-rel{font-size:.88rem;margin:4px 0}
+.campo-rel b{color:var(--oxala-2);font-weight:400}
+.texto-rel{white-space:pre-wrap;font-size:.9rem;line-height:1.55;margin:4px 0}
 @media(max-width:560px){.topo h1{font-size:1.1rem}}
 </style>
 </head>
@@ -77,7 +90,13 @@ button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-w
   <!-- DETALHE DE UM MÉDIUM -->
   <div id="telaDetalhe" style="display:none">
     <button onclick="voltar()" style="margin-bottom:12px">&larr; Voltar à lista</button>
+    <div id="detalheResumo"></div>
+    <div class="abas">
+      <button id="abaCursos" class="ativa" onclick="trocarAba('cursos')">Cursos</button>
+      <button id="abaGiras" onclick="trocarAba('giras')">Giras</button>
+    </div>
     <div id="detalheCorpo"></div>
+    <div id="detalheGiras" style="display:none"></div>
   </div>
 </div>
 
@@ -147,6 +166,11 @@ async function carregarBase(){
   window.progressoTodos = r3.data||[];
   temData = (r3.data||[]).some(p => p.created_at);
 
+  const r4 = await db.from('giras').select('id,titulo,data,orixa,linha').order('data',{ascending:false});
+  window.girasTodas = r4.error ? [] : (r4.data||[]);
+  const r5 = await db.from('relatos_gira').select('aluno_id,gira_id,enviado');
+  window.relatosTodos = r5.error ? [] : (r5.data||[]);
+
   desenharLista();
 }
 
@@ -162,15 +186,25 @@ function desenharLista(){
   const el = document.getElementById('listaAlunos');
   if(!filtrados.length){ el.innerHTML='<p class="vazio">Nenhum médium encontrado.</p>'; return; }
 
+  // giras já realizadas e relatos enviados por aluno
+  const hoje = new Date().toISOString().slice(0,10);
+  const girasPassadas = (window.girasTodas||[]).filter(g => String(g.data).slice(0,10) <= hoje);
+  const relCont = {};
+  (window.relatosTodos||[]).filter(r=>r.enviado).forEach(r => relCont[r.aluno_id] = (relCont[r.aluno_id]||0)+1);
+
   el.innerHTML = filtrados.map(a=>{
     const feitas = cont[a.id]||0;
     const pct = totalAulas ? Math.round(feitas/totalAulas*100) : 0;
+    const gFeitas = relCont[a.id]||0;
+    const gPct = girasPassadas.length ? Math.round(gFeitas/girasPassadas.length*100) : 0;
     return `
     <div class="aluno" onclick="abrirDetalhe('${a.id}')">
       <div class="nome">
         ${escapeHtml(a.nome)} ${a.ativo?'':'<span class="selo vermelho">inativo</span>'}
-        <small>${feitas} de ${totalAulas} aulas · ${pct}%${a.nivel?' · Nível '+escapeHtml(String(a.nivel)):''}</small>
+        <small>Cursos: ${feitas} de ${totalAulas} aulas · ${pct}%${a.nivel?' · Nível '+escapeHtml(String(a.nivel)):''}</small>
         <div class="barrinha"><div style="width:${pct}%"></div></div>
+        <small style="margin-top:5px">Giras: ${gFeitas} de ${girasPassadas.length} relatos · ${gPct}%</small>
+        <div class="barrinha"><div style="width:${gPct}%"></div></div>
       </div>
       <span class="lupa">🔍</span>
     </div>`;
@@ -189,7 +223,9 @@ async function abrirDetalhe(alunoId){
 
   const r1 = await db.from('progresso_aulas').select('aula_id,created_at').eq('aluno_id',alunoId);
   const r2 = await db.from('resultados_provas').select('prova_id,nota,aprovado,created_at').eq('aluno_id',alunoId);
+  const rg = await db.from('relatos_gira').select('gira_id,dados,enviado,enviado_em').eq('aluno_id',alunoId);
   if(r1.error||r2.error){ erro('Erro ao abrir: '+((r1.error||r2.error).message)); return; }
+  if(rg.error) erro('Aviso: não consegui ler os relatos de gira — '+rg.error.message);
 
   const mapaAula = {}; (r1.data||[]).forEach(p => mapaAula[p.aula_id] = p.created_at);
   const tentativas = {};
@@ -200,7 +236,7 @@ async function abrirDetalhe(alunoId){
   const todasDatas = [...(r1.data||[]).map(x=>x.created_at), ...(r2.data||[]).map(x=>x.created_at)].filter(Boolean).sort();
   const primeiro = todasDatas[0], ultimo = todasDatas[todasDatas.length-1];
 
-  let html = `
+  document.getElementById('detalheResumo').innerHTML = `
     <div class="cartao">
       <h3>${escapeHtml(a.nome)}</h3>
       <p class="mudo">${escapeHtml(a.email||'')}${a.nivel?' · Nível '+escapeHtml(String(a.nivel)):''} · ${escapeHtml(a.role)}</p>
@@ -208,10 +244,15 @@ async function abrirDetalhe(alunoId){
         <div><strong>${(r1.data||[]).length}</strong> aulas concluídas</div>
         <div><strong>${(r2.data||[]).filter(x=>x.aprovado).length}</strong> provas aprovadas</div>
         <div><strong>${(r2.data||[]).length}</strong> tentativas de prova</div>
+        <div><strong>${(rg.data||[]).filter(x=>x.enviado).length}</strong> relatos de gira</div>
       </div>
       ${primeiro ? `<p class="mudo">Primeiro registro: ${dataHora(primeiro)} · Último: ${dataHora(ultimo)}</p>` : ''}
       ${!temData ? '<p class="mudo">Os registros anteriores à ativação do acompanhamento aparecem sem data.</p>' : ''}
     </div>`;
+
+  desenharGiras(rg.data||[]);
+
+  let html = ``;
 
   cursos.forEach(c=>{
     const mods = (c.modulos||[]).slice().sort((x,y)=>(x.ordem||0)-(y.ordem||0));
@@ -276,7 +317,100 @@ async function abrirDetalhe(alunoId){
   document.getElementById('detalheCorpo').innerHTML = html;
 }
 
+/* --------- abas --------- */
+function trocarAba(qual){
+  const cursos = qual==='cursos';
+  document.getElementById('detalheCorpo').style.display = cursos?'block':'none';
+  document.getElementById('detalheGiras').style.display = cursos?'none':'block';
+  document.getElementById('abaCursos').classList.toggle('ativa', cursos);
+  document.getElementById('abaGiras').classList.toggle('ativa', !cursos);
+  window.scrollTo(0,0);
+}
+
+/* --------- relatos de gira --------- */
+function desenharGiras(relatos){
+  const mapa = {}; (relatos||[]).forEach(r => mapa[r.gira_id] = r);
+  const hoje = new Date().toISOString().slice(0,10);
+  const lista = (window.girasTodas||[]).filter(g => String(g.data).slice(0,10) <= hoje);
+  const el = document.getElementById('detalheGiras');
+
+  if(!lista.length){ el.innerHTML = '<p class="vazio">Nenhuma gira registrada até hoje.</p>'; return; }
+
+  el.innerHTML = lista.map(g=>{
+    const r = mapa[g.id];
+    const sub = [g.orixa && 'Orixá: '+escapeHtml(g.orixa), g.linha && 'Linha: '+escapeHtml(g.linha)].filter(Boolean).join(' · ');
+    const dt = new Date(String(g.data).slice(0,10)+'T12:00').toLocaleDateString('pt-BR');
+
+    let selo, corpo;
+    if(!r){
+      selo = '<span class="selo vermelho">não relatou</span>';
+      corpo = '<p class="mudo">Este médium não abriu o formulário desta gira.</p>';
+    } else if(!r.enviado){
+      selo = '<span class="selo azul">rascunho</span>';
+      corpo = '<p class="mudo">Começou a preencher mas ainda não enviou.</p>' + corpoRelato(r.dados||{});
+    } else {
+      selo = '<span class="selo verde">enviado</span>';
+      corpo = (r.enviado_em?`<p class="mudo">Enviado em ${dataHora(r.enviado_em)}</p>`:'') + corpoRelato(r.dados||{});
+    }
+
+    return `<details class="gira">
+      <summary>
+        <span class="tt">${escapeHtml(g.titulo)}</span>
+        <span class="selo ouro">${dt}</span>
+        ${selo}
+      </summary>
+      ${sub?`<p class="mudo">${sub}</p>`:''}
+      ${corpo}
+    </details>`;
+  }).join('');
+}
+
+function corpoRelato(d){
+  let h = '';
+
+  if((d.funcoes||[]).length){
+    h += `<div class="bloco"><h5>Como atuou</h5>${
+      d.funcoes.map(f=>`<span class="selo ouro" style="margin:2px 4px 2px 0">${escapeHtml(f)}</span>`).join('')
+    }</div>`;
+  }
+
+  const cb = d.pessoas_cambone||[];
+  if(cb.length){
+    h += `<div class="bloco"><h5>Atendimentos como cambone (${cb.length})</h5>${
+      cb.map((p,i)=>`
+        <div style="border-left:2px solid var(--linha); padding-left:10px; margin:8px 0">
+          <div class="campo-rel"><b>Consulente:</b> ${escapeHtml(p.consulente||'—')}</div>
+          <div class="campo-rel"><b>Entidade:</b> ${escapeHtml(p.entidade||'—')} · <b>Médium:</b> ${escapeHtml(p.medium||'—')}</div>
+          ${p.falado?`<div class="campo-rel"><b>O que foi falado:</b></div><div class="texto-rel">${escapeHtml(p.falado)}</div>`:''}
+          ${p.banho?`<div class="campo-rel"><b>Banho / trabalho:</b></div><div class="texto-rel">${escapeHtml(p.banho)}</div>`:''}
+        </div>`).join('')
+    }</div>`;
+  }
+
+  const fr = d.consulentes_frente||[];
+  if(fr.length){
+    const novos = fr.filter(c=>c.nova==='sim').length;
+    const tels = fr.filter(c=>c.telefone && c.telefone.trim()).length;
+    h += `<div class="bloco"><h5>Consulentes como médium de frente (${fr.length})</h5>
+      <p class="mudo" style="margin:0 0 8px">${novos} ${novos===1?'pessoa nova':'pessoas novas'} na casa · ${tels} ${tels===1?'telefone deixado':'telefones deixados'}</p>
+      ${fr.map(c=>`
+        <div class="campo-rel" style="border-left:2px solid var(--linha); padding-left:10px; margin:6px 0">
+          ${escapeHtml(c.nome||'—')} — ${escapeHtml(c.entidade||'—')}
+          ${c.nova==='sim'?'<span class="selo verde">nova na casa</span>':''}
+          ${c.nova==='nao'?'<span class="selo">já frequenta</span>':''}
+          ${c.telefone?`<span class="selo azul">${escapeHtml(c.telefone)}</span>`:''}
+        </div>`).join('')}
+    </div>`;
+  }
+
+  if(d.descricao) h += `<div class="bloco"><h5>Descrição</h5><div class="texto-rel">${escapeHtml(d.descricao)}</div></div>`;
+  if(d.feedback)  h += `<div class="bloco"><h5>Feedback para a casa</h5><div class="texto-rel">${escapeHtml(d.feedback)}</div></div>`;
+
+  return h || '<p class="mudo">Formulário em branco.</p>';
+}
+
 function voltar(){
+  trocarAba('cursos');
   document.getElementById('telaDetalhe').style.display='none';
   document.getElementById('telaLista').style.display='block';
   document.getElementById('tituloTopo').textContent='Acompanhamento';
