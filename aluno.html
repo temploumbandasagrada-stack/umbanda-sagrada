@@ -816,7 +816,8 @@ let cursosCache = [], acessosSet = new Set(), aprovadasSet = new Set(), cursoAbe
 async function carregarCursos() {
   const { data: cursos } = await db.from('cursos')
     .select('*, modulos(*, aulas(*), provas(*))')
-    .eq('ativo', true).order('categoria');
+    .eq('ativo', true)
+    .order('categoria').order('ordem', { nullsFirst: false }).order('titulo');
   const { data: resultados } = await db.from('resultados_provas').select('*').eq('aluno_id', eu.id);
   const { data: acessos } = await db.from('acessos_curso').select('curso_id').eq('aluno_id', eu.id);
   cursosCache = cursos || [];
