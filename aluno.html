@@ -354,6 +354,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 <div class="menu-fundo" id="menuFundo" onclick="fecharMenuTopo()"></div>
 <div class="menu-painel" id="menuPainel">
   <p class="mudo" id="menuSaudacao" style="margin-bottom:6px"></p>
+  <button class="menu-op nav" data-secao="inicio" onclick="irPara('inicio')">Início</button>
   <button class="menu-op nav" data-secao="cursos" onclick="irPara('cursos')">Meus estudos</button>
   <button class="menu-op nav" data-secao="biblioteca" onclick="irPara('biblioteca')">Biblioteca</button>
   <button class="menu-op nav" data-secao="anotacoes" onclick="irPara('anotacoes')">Anotações</button>
@@ -373,8 +374,15 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 
 <main class="conteudo">
 
+  <!-- ==================== INÍCIO (PAINEL) ==================== -->
+  <section class="secao ativa" id="sec-inicio">
+    <h2 id="inicioSaudacao">Axé</h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="inicioCorpo"><p class="vazio">Abrindo seu caminho…</p></div>
+  </section>
+
   <!-- ==================== ESTUDOS ==================== -->
-  <section class="secao ativa" id="sec-cursos">
+  <section class="secao" id="sec-cursos">
     <h2>Meus estudos</h2>
     <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
     <div id="listaCursos"></div>
@@ -417,6 +425,23 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <div id="agConteudo"></div>
   </section>
 </main>
+
+<!-- MODAL PORTÃO — relatos de gira pendentes -->
+<div class="veu" id="veuPortao">
+  <div class="modal" style="max-width:560px">
+    <h3>Falta o seu relato</h3>
+    <div class="firmeza"><span class="estrela">✦</span></div>
+    <p style="margin-top:10px">
+      Antes de seguir para o restante da plataforma, precisamos do seu relato
+      da(s) gira(s) abaixo. Toque na gira para preencher.
+    </p>
+    <p class="mudo" style="font-size:.85rem">
+      Se você não esteve nesta gira, abra mesmo assim e marque
+      <strong>“Não participei desta gira”</strong>. Isso já libera o seu acesso.
+    </p>
+    <div id="portaoLista" style="margin-top:14px"></div>
+  </div>
+</div>
 
 <!-- MODAL CURSO (conteúdo) -->
 <div class="veu" id="veuCurso">
@@ -631,23 +656,149 @@ async function init() {
   if (eu.role === 'admin') { window.location.href = 'admin.html'; return; }
   if (!eu.ativo) { await sair(); return; }
   document.getElementById('saudacao').textContent = 'Axé, ' + eu.nome.split(' ')[0] + ' · Nível ' + eu.nivel;
-  const inicial = document.querySelector('.menu-op.nav[data-secao="cursos"]');
+  document.getElementById('inicioSaudacao').textContent = 'Axé, ' + eu.nome.split(' ')[0];
+  const inicial = document.querySelector('.menu-op.nav[data-secao="inicio"]');
   if (inicial) inicial.classList.add('ativa');
   await carregarProgresso();
   carregarCursos(); carregarBiblioteca(); carregarGiras();
+  await carregarInicio();
+  await checarPortao();
 }
 
 function irPara(secao) {
+  if (portaoTrancado && secao !== 'inicio') { abrirPortao(); fecharMenuTopo(); return; }
   document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
   document.querySelectorAll('.menu-op.nav').forEach(a => a.classList.remove('ativa'));
   document.getElementById('sec-' + secao).classList.add('ativa');
   const item = document.querySelector(`.menu-op.nav[data-secao="${secao}"]`);
   if (item) item.classList.add('ativa');
+  if (secao === 'inicio') carregarInicio();
   if (secao === 'anotacoes') carregarAnotacoes();
   if (secao === 'agenda') carregarAgenda();
   fecharMenuTopo();
 }
-function fechar(id) { document.getElementById(id).classList.remove('aberto'); }
+function fechar(id) {
+  if (id === 'veuPortao' && portaoTrancado) return;   // portão não fecha no dedo
+  document.getElementById(id).classList.remove('aberto');
+  if (id === 'veuRelato' && portaoTrancado) abrirPortao();
+}
+
+/* ==================== INÍCIO (PAINEL) ==================== */
+let portaoTrancado = false, girasPendentes = [];
+
+function hojeISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function dataBR(iso) { return new Date(iso + 'T12:00').toLocaleDateString('pt-BR'); }
+
+// Giras já realizadas (data <= hoje) sem relato enviado
+async function buscarGirasPendentes() {
+  const { data: giras } = await db.from('giras').select('*').lte('data', hojeISO()).order('data', { ascending: false });
+  const { data: meus } = await db.from('relatos_gira').select('gira_id, enviado').eq('aluno_id', eu.id);
+  const enviados = new Set((meus || []).filter(r => r.enviado).map(r => r.gira_id));
+  girasPendentes = (giras || []).filter(g => !enviados.has(g.id));
+  return girasPendentes;
+}
+
+async function checarPortao() {
+  await buscarGirasPendentes();
+  portaoTrancado = girasPendentes.length > 0;
+  if (portaoTrancado) { irPara('inicio'); abrirPortao(); }
+  else fechar('veuPortao');
+  await carregarInicio();
+}
+
+function abrirPortao() {
+  if (!portaoTrancado) return;
+  document.getElementById('portaoLista').innerHTML = girasPendentes.map(g => `
+    <button class="btn" style="width:100%; text-align:left; margin-bottom:8px"
+      onclick='abrirRelato(${JSON.stringify(g).replace(/'/g,"&#39;")}, false)'>
+      ${escapeHtml(g.titulo)} — ${dataBR(g.data)}
+    </button>`).join('');
+  document.getElementById('veuPortao').classList.add('aberto');
+}
+
+async function carregarInicio() {
+  const cx = document.getElementById('inicioCorpo');
+  const hoje = hojeISO();
+  const limite = new Date(); limite.setDate(limite.getDate() + 7);
+  const limiteISO = limite.getFullYear() + '-' + String(limite.getMonth()+1).padStart(2,'0') + '-' + String(limite.getDate()).padStart(2,'0');
+
+  // eventos da casa destinados a mim
+  const { data: todos } = await db.from('eventos').select('*, eventos_destinatarios(aluno_id)').order('data');
+  const meusEventos = (todos || []).filter(e => e.para_todos || (e.eventos_destinatarios || []).some(d => d.aluno_id === eu.id));
+  const { data: c } = await db.from('eventos_ciente').select('evento_id').eq('aluno_id', eu.id);
+  const ciente = new Set((c || []).map(x => x.evento_id));
+
+  // lembretes pessoais
+  let lembretes = [];
+  try {
+    const { data: lp } = await db.from('lembretes_pessoais').select('*').eq('user_id', eu.id);
+    lembretes = (lp || []).filter(l => !l.concluido).map(l => ({
+      titulo: l.titulo, data: String(l.data).slice(0,10), hora: l.hora
+    }));
+  } catch (e) { /* tabela pode não existir ainda */ }
+
+  const pendCiente = meusEventos.filter(e => !ciente.has(e.id) && e.data >= hoje);
+  const proxEventos = meusEventos.filter(e => e.data >= hoje && e.data <= limiteISO);
+  const proxLembretes = lembretes.filter(l => l.data >= hoje && l.data <= limiteISO);
+  const atrasados = lembretes.filter(l => l.data < hoje);
+
+  let html = '';
+
+  // 1. pendências de gira
+  if (girasPendentes.length) {
+    html += `<div class="cartao" style="border-color:rgba(196,106,106,.45)">
+      <h3 style="color:var(--perigo)">Relato de gira pendente</h3>
+      <p class="mudo" style="margin-top:4px">O restante da plataforma fica fechado até você concluir.</p>
+      ${girasPendentes.map(g => `
+        <button class="btn btn-mini" style="margin-top:8px"
+          onclick='abrirRelato(${JSON.stringify(g).replace(/'/g,"&#39;")}, false)'>
+          ${escapeHtml(g.titulo)} — ${dataBR(g.data)}
+        </button>`).join('')}
+    </div>`;
+  }
+
+  // 2. lembretes atrasados
+  if (atrasados.length) {
+    html += `<div class="cartao">
+      <h3>Lembretes atrasados</h3>
+      ${atrasados.map(l => `<p style="margin-top:6px">• ${escapeHtml(l.titulo)}
+        <span class="selo vermelho">${dataBR(l.data)}</span></p>`).join('')}
+      <button class="btn btn-mini btn-fantasma" style="margin-top:10px" onclick="location.href='lembretes.html'">Abrir lembretes</button>
+    </div>`;
+  }
+
+  // 3. avisos da casa sem ciente
+  if (pendCiente.length) {
+    html += `<div class="cartao">
+      <h3>Avisos da casa aguardando seu ciente</h3>
+      ${pendCiente.map(e => `<p style="margin-top:6px">• ${escapeHtml(e.titulo)}
+        <span class="selo azul">${dataBR(e.data)}</span></p>`).join('')}
+      <button class="btn btn-mini" style="margin-top:10px" onclick="irPara('agenda')">Ver na agenda</button>
+    </div>`;
+  }
+
+  // 4. próximos 7 dias
+  const prox = [
+    ...proxEventos.map(e => ({ titulo: e.titulo, data: e.data, hora: e.hora, tipo: 'Casa' })),
+    ...proxLembretes.map(l => ({ titulo: l.titulo, data: l.data, hora: l.hora, tipo: 'Meu' }))
+  ].sort((a,b) => a.data.localeCompare(b.data));
+
+  html += `<div class="cartao">
+    <h3>Próximos sete dias</h3>
+    ${prox.length
+      ? prox.map(p => `<p style="margin-top:6px">
+          <span class="selo ${p.tipo === 'Casa' ? 'azul' : 'verde'}">${p.tipo}</span>
+          ${escapeHtml(p.titulo)} — ${dataBR(p.data)}${p.hora ? ' às ' + String(p.hora).slice(0,5) : ''}
+        </p>`).join('')
+      : '<p class="mudo" style="margin-top:6px">Nada marcado para esta semana.</p>'}
+    <button class="btn btn-mini btn-fantasma" style="margin-top:10px" onclick="irPara('agenda')">Ver calendário</button>
+  </div>`;
+
+  cx.innerHTML = html;
+}
 
 /* ==================== ESTUDOS ==================== */
 async function carregarProgresso() {
@@ -1209,7 +1360,7 @@ async function darCiente(eventoId) {
 }
 
 /* ==================== GIRAS ==================== */
-const FUNCOES = ['Cambone', 'Cambone chefe', 'Médium de frente', 'Médium de incorporação', 'Ogã', 'Porteira', 'Assistente'];
+const FUNCOES = ['Cambone', 'Cambone chefe', 'Médium de frente', 'Médium de incorporação', 'Ogã', 'Porteira', 'Assistente', 'Não participei desta gira'];
 
 async function carregarGiras() {
   const { data: giras } = await db.from('giras').select('*').order('data', { ascending: false });
@@ -1236,6 +1387,7 @@ async function carregarGiras() {
 let giraAtual = null, relatoAtual = null, somenteVer = false;
 
 async function abrirRelato(gira, ver) {
+  document.getElementById('veuPortao').classList.remove('aberto');
   giraAtual = gira; somenteVer = ver;
   const { data: r } = await db.from('relatos_gira').select('*').eq('aluno_id', eu.id).eq('gira_id', gira.id).maybeSingle();
   relatoAtual = r;
@@ -1269,10 +1421,17 @@ function funcoesMarcadas() {
 }
 function atualizarCamposFuncao() {
   const fs = funcoesMarcadas();
-  const temCambone = fs.some(f => f.startsWith('Cambone'));
-  const temFrente = fs.includes('Médium de frente');
+  const ausente = fs.includes('Não participei desta gira');
+  const temCambone = !ausente && fs.some(f => f.startsWith('Cambone'));
+  const temFrente = !ausente && fs.includes('Médium de frente');
   document.getElementById('blocoCambone').style.display = temCambone ? 'block' : 'none';
   document.getElementById('blocoFrente').style.display = temFrente ? 'block' : 'none';
+  // ao marcar ausência, desmarca as demais funções
+  if (ausente) {
+    document.querySelectorAll('.fnChk').forEach(c => {
+      if (c.value !== 'Não participei desta gira') c.checked = false;
+    });
+  }
 }
 
 function addLinhaCambone(p = {}) {
@@ -1348,6 +1507,8 @@ async function enviarRelato() {
   }, { onConflict: 'gira_id,aluno_id' });
   document.getElementById('veuRelato').classList.remove('aberto');
   carregarGiras();
+  await checarPortao();
+  if (!portaoTrancado) aviso2('Relato enviado. Plataforma liberada, axé!');
 }
 
 function bloquearSeVer() {
