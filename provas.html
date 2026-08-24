@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1321">
+<title>Casa de Estudo — Editar provas</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap');
+
+:root{
+  --noite:#0D1321; --noite-2:#111A2E; --altar:#16203A; --altar-2:#1B2745;
+  --ouro:#C9A227; --ouro-claro:#E8CE7A; --oxala:#F4EFE3; --oxala-2:#C8C2B2;
+  --agua:#7FA3C4; --erva:#6FA383; --perigo:#C46A6A;
+  --linha:rgba(201,162,39,.22); --raio:14px;
+}
+body.claro{ --noite:#EFE9DC; --noite-2:#E7E0CF; --altar:#F6F1E4; --altar-2:#EDE6D5;
+  --oxala:#3A3222; --oxala-2:#6B6350; --linha:rgba(122,95,20,.25); }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--noite);color:var(--oxala);font-family:'Jost',sans-serif;font-weight:300;padding-bottom:60px}
+h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:600;margin:0}
+.topo{position:sticky;top:0;z-index:20;background:var(--noite-2);border-bottom:1px solid var(--linha);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topo h1{font-size:1.3rem;color:var(--ouro-claro);flex:1}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+.cartao{background:var(--altar);border:1px solid var(--linha);border-radius:var(--raio);padding:16px;margin-bottom:16px}
+label{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--oxala-2);margin:0 0 5px}
+input,select,textarea{width:100%;background:var(--altar-2);border:1px solid var(--linha);border-radius:8px;color:var(--oxala);padding:10px 12px;font-family:'Jost',sans-serif;font-size:.95rem;font-weight:300}
+textarea{resize:vertical;min-height:60px;line-height:1.45}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ouro)}
+.campo{margin-bottom:12px}
+.linha2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{font-family:'Jost',sans-serif;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;border-radius:8px;padding:11px 16px;cursor:pointer;border:1px solid var(--linha);background:transparent;color:var(--oxala)}
+button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-weight:500}
+button.perigo{border-color:rgba(196,106,106,.5);color:var(--perigo)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.questao{background:var(--altar-2);border:1px solid var(--linha);border-radius:12px;padding:14px;margin-bottom:14px}
+.qtopo{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.qnum{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--ouro);min-width:34px}
+.alt{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.altletra{display:flex;align-items:center;gap:5px;font-size:.9rem;color:var(--oxala-2)}
+.altletra input[type=radio]{width:auto;margin:0;accent-color:var(--ouro)}
+.certa{color:var(--erva);font-weight:500}
+.aviso{display:none;padding:11px 14px;border-radius:8px;font-size:.9rem;margin:12px 0}
+.aviso.ok{display:block;background:rgba(111,168,124,.14);border:1px solid rgba(111,168,124,.45);color:var(--erva)}
+.aviso.erro{display:block;background:rgba(196,106,106,.14);border:1px solid rgba(196,106,106,.45);color:var(--perigo)}
+.mudo{color:var(--oxala-2);font-size:.88rem}
+.vazio{text-align:center;color:var(--oxala-2);padding:34px 16px;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+.barra{position:sticky;bottom:0;background:var(--noite-2);border-top:1px solid var(--linha);padding:12px 16px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;z-index:15}
+@media(max-width:560px){.linha2{grid-template-columns:1fr}.topo h1{font-size:1.1rem}}
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <h1>Editar provas</h1>
+  <span class="mudo" id="quemSou"></span>
+  <button onclick="alternarTema()">Tema</button>
+  <button onclick="location.href='admin.html'">Painel</button>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <div class="campo">
+      <label>Curso</label>
+      <select id="selCurso" onchange="carregarModulos()"><option value="">Carregando…</option></select>
+    </div>
+    <div class="campo">
+      <label>Módulo</label>
+      <select id="selModulo" onchange="carregarProvas()"><option value="">Escolha o curso primeiro</option></select>
+    </div>
+    <div class="campo" style="margin-bottom:0">
+      <label>Prova</label>
+      <select id="selProva" onchange="carregarProva()"><option value="">Escolha o módulo primeiro</option></select>
+    </div>
+  </div>
+
+  <div id="avisoTopo" class="aviso"></div>
+
+  <div id="areaProva" style="display:none">
+    <div class="cartao">
+      <div class="linha2">
+        <div class="campo" style="margin-bottom:0">
+          <label>Título da prova</label>
+          <input id="provaTitulo" type="text">
+        </div>
+        <div class="campo" style="margin-bottom:0">
+          <label>Nota mínima (%)</label>
+          <input id="provaNota" type="number" min="0" max="100" step="1">
+        </div>
+      </div>
+    </div>
+
+    <div id="listaQuestoes"></div>
+
+    <div class="acoes">
+      <button onclick="novaQuestao()">+ Adicionar questão</button>
+    </div>
+  </div>
+
+  <div id="semProva" class="vazio">Escolha um curso, um módulo e uma prova para começar.</div>
+</div>
+
+<div class="barra" id="barraSalvar" style="display:none">
+  <span class="mudo" id="contador" style="margin-right:auto;align-self:center"></span>
+  <button onclick="carregarProva()">Descartar mudanças</button>
+  <button class="ouro" id="btnSalvar" onclick="salvarTudo()">Salvar prova</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://jqepdfxtqdjtozbrlkrm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXBkZnh0cWRqdG96YnJsa3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTM4NjUsImV4cCI6MjEwMTE4OTg2NX0.9B_GAcACUsRBAe1GY7MUzmk1prquDsA6YsKp3f3v4Z0";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let eu = null;
+let provaAtual = null;
+let questoes = [];        // estado em memória
+let apagadas = [];        // ids de questões removidas
+
+/* ---------- tema ---------- */
+function aplicarTema(){ document.body.classList.toggle('claro', localStorage.getItem('tema')==='claro'); }
+function alternarTema(){ const c = !(localStorage.getItem('tema')==='claro'); localStorage.setItem('tema', c?'claro':'escuro'); aplicarTema(); }
+aplicarTema();
+
+function escapeHtml(t){ return (t||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function avisar(txt, tipo){
+  const el = document.getElementById('avisoTopo');
+  el.className = 'aviso ' + tipo; el.textContent = txt;
+  if (tipo === 'ok') setTimeout(()=>{ el.className='aviso'; el.textContent=''; }, 4000);
+}
+
+/* ---------- login ---------- */
+init();
+async function init(){
+  const { data:{ session } } = await db.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  const { data: perfil } = await db.from('profiles').select('*').eq('id', session.user.id).single();
+  if (!perfil) { location.href = 'index.html'; return; }
+  if (perfil.role !== 'admin' && perfil.role !== 'editor') {
+    document.querySelector('.wrap').innerHTML =
+      '<div class="vazio">Esta página é só para administradores e editores.</div>';
+    return;
+  }
+  eu = perfil;
+  document.getElementById('quemSou').textContent = perfil.nome.split(' ')[0] + ' · ' + perfil.role;
+  carregarCursos();
+}
+
+/* ---------- seletores ---------- */
+async function carregarCursos(){
+  const { data, error } = await db.from('cursos').select('id,titulo,categoria').order('categoria').order('titulo');
+  const s = document.getElementById('selCurso');
+  if (error) { avisar('Erro ao carregar cursos: ' + error.message, 'erro'); return; }
+  s.innerHTML = '<option value="">— escolha —</option>' +
+    (data||[]).map(c => `<option value="${c.id}">${escapeHtml(c.titulo)}</option>`).join('');
+}
+
+async function carregarModulos(){
+  const cursoId = document.getElementById('selCurso').value;
+  const s = document.getElementById('selModulo');
+  document.getElementById('selProva').innerHTML = '<option value="">Escolha o módulo primeiro</option>';
+  fecharProva();
+  if (!cursoId) { s.innerHTML = '<option value="">Escolha o curso primeiro</option>'; return; }
+  const { data, error } = await db.from('modulos').select('id,titulo,ordem').eq('curso_id', cursoId).order('ordem');
+  if (error) { avisar('Erro ao carregar módulos: ' + error.message, 'erro'); return; }
+  if (!data || !data.length) { s.innerHTML = '<option value="">Este curso não tem módulos</option>'; return; }
+  s.innerHTML = '<option value="">— escolha —</option>' +
+    data.map(m => `<option value="${m.id}">${m.ordem}. ${escapeHtml(m.titulo)}</option>`).join('');
+}
+
+async function carregarProvas(){
+  const modId = document.getElementById('selModulo').value;
+  const s = document.getElementById('selProva');
+  fecharProva();
+  if (!modId) { s.innerHTML = '<option value="">Escolha o módulo primeiro</option>'; return; }
+  const { data, error } = await db.from('provas').select('id,titulo,nota_minima').eq('modulo_id', modId).order('titulo');
+  if (error) { avisar('Erro ao carregar provas: ' + error.message, 'erro'); return; }
+  if (!data || !data.length) { s.innerHTML = '<option value="">Este módulo não tem prova</option>'; return; }
+  s.innerHTML = '<option value="">— escolha —</option>' +
+    data.map(p => `<option value="${p.id}">${escapeHtml(p.titulo)}</option>`).join('');
+  if (data.length === 1) { s.value = data[0].id; carregarProva(); }
+}
+
+function fecharProva(){
+  provaAtual = null; questoes = []; apagadas = [];
+  document.getElementById('areaProva').style.display = 'none';
+  document.getElementById('barraSalvar').style.display = 'none';
+  document.getElementById('semProva').style.display = 'block';
+}
+
+/* ---------- carregar prova ---------- */
+async function carregarProva(){
+  const provaId = document.getElementById('selProva').value;
+  if (!provaId) { fecharProva(); return; }
+  const { data, error } = await db.from('provas').select('*, questoes(*)').eq('id', provaId).single();
+  if (error) { avisar('Erro ao abrir a prova: ' + error.message, 'erro'); return; }
+  provaAtual = data;
+  apagadas = [];
+  questoes = (data.questoes || []).slice().sort((a,b) => (a.ordem||0) - (b.ordem||0));
+  document.getElementById('provaTitulo').value = data.titulo || '';
+  document.getElementById('provaNota').value = data.nota_minima ?? 70;
+  document.getElementById('semProva').style.display = 'none';
+  document.getElementById('areaProva').style.display = 'block';
+  document.getElementById('barraSalvar').style.display = 'flex';
+  desenhar();
+}
+
+/* ---------- desenhar questões ---------- */
+function desenhar(){
+  const cx = document.getElementById('listaQuestoes');
+  if (!questoes.length) {
+    cx.innerHTML = '<div class="vazio">Esta prova ainda não tem questões. Use o botão abaixo para criar a primeira.</div>';
+  } else {
+    cx.innerHTML = questoes.map((q,i) => `
+      <div class="questao">
+        <div class="qtopo">
+          <span class="qnum">${i+1}.</span>
+          <button onclick="mover(${i},-1)" ${i===0?'disabled':''} title="Subir">↑</button>
+          <button onclick="mover(${i},1)" ${i===questoes.length-1?'disabled':''} title="Descer">↓</button>
+          <button class="perigo" style="margin-left:auto" onclick="excluirQuestao(${i})">Excluir</button>
+        </div>
+        <div class="campo">
+          <label>Enunciado</label>
+          <textarea oninput="setCampo(${i},'enunciado',this.value)">${escapeHtml(q.enunciado)}</textarea>
+        </div>
+        ${['a','b','c','d'].map(op => `
+          <div class="alt">
+            <label class="altletra ${q.correta===op?'certa':''}" title="Marcar como correta">
+              <input type="radio" name="c_${i}" value="${op}" ${q.correta===op?'checked':''}
+                     onchange="setCampo(${i},'correta','${op}')">
+              ${op.toUpperCase()}
+            </label>
+            <input type="text" value="${escapeHtml(q['opcao_'+op])}"
+                   oninput="setCampo(${i},'opcao_${op}',this.value)">
+          </div>`).join('')}
+      </div>`).join('');
+  }
+  document.getElementById('contador').textContent =
+    questoes.length + (questoes.length === 1 ? ' questão' : ' questões');
+}
+
+function setCampo(i, campo, valor){
+  questoes[i][campo] = valor;
+  if (campo === 'correta') desenhar();
+}
+
+function mover(i, dir){
+  const j = i + dir;
+  if (j < 0 || j >= questoes.length) return;
+  const t = questoes[i]; questoes[i] = questoes[j]; questoes[j] = t;
+  desenhar();
+}
+
+function excluirQuestao(i){
+  const q = questoes[i];
+  const txt = (q.enunciado || '').slice(0,60);
+  if (!confirm('Excluir esta questão?\n\n' + txt + '…\n\nSó vale depois de salvar.')) return;
+  if (q.id) apagadas.push(q.id);
+  questoes.splice(i,1);
+  desenhar();
+}
+
+function novaQuestao(){
+  questoes.push({ id:null, enunciado:'', opcao_a:'', opcao_b:'', opcao_c:'', opcao_d:'', correta:'a' });
+  desenhar();
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+/* ---------- salvar ---------- */
+async function salvarTudo(){
+  if (!provaAtual) return;
+  const btn = document.getElementById('btnSalvar');
+
+  // validação
+  for (let i = 0; i < questoes.length; i++){
+    const q = questoes[i];
+    if (!q.enunciado || !q.enunciado.trim()) return avisar('A questão ' + (i+1) + ' está sem enunciado.', 'erro');
+    for (const op of ['a','b','c','d']){
+      if (!q['opcao_'+op] || !q['opcao_'+op].trim())
+        return avisar('A questão ' + (i+1) + ' está sem a alternativa ' + op.toUpperCase() + '.', 'erro');
+    }
+    if (!['a','b','c','d'].includes(q.correta))
+      return avisar('A questão ' + (i+1) + ' está sem resposta correta marcada.', 'erro');
+  }
+  const nota = parseInt(document.getElementById('provaNota').value, 10);
+  if (isNaN(nota) || nota < 0 || nota > 100) return avisar('Nota mínima precisa ser um número de 0 a 100.', 'erro');
+
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    // 1. cabeçalho da prova
+    const { error: e1 } = await db.from('provas')
+      .update({ titulo: document.getElementById('provaTitulo').value.trim(), nota_minima: nota })
+      .eq('id', provaAtual.id);
+    if (e1) throw e1;
+
+    // 2. exclusões
+    if (apagadas.length){
+      const { error: e2 } = await db.from('questoes').delete().in('id', apagadas);
+      if (e2) throw e2;
+      apagadas = [];
+    }
+
+    // 3. questões existentes
+    for (let i = 0; i < questoes.length; i++){
+      const q = questoes[i];
+      const corpo = {
+        enunciado: q.enunciado.trim(),
+        opcao_a: q.opcao_a.trim(), opcao_b: q.opcao_b.trim(),
+        opcao_c: q.opcao_c.trim(), opcao_d: q.opcao_d.trim(),
+        correta: q.correta, ordem: i + 1
+      };
+      if (q.id){
+        const { error } = await db.from('questoes').update(corpo).eq('id', q.id);
+        if (error) throw error;
+      } else {
+        corpo.prova_id = provaAtual.id;
+        const { data, error } = await db.from('questoes').insert(corpo).select('id').single();
+        if (error) throw error;
+        q.id = data.id;
+      }
+    }
+
+    avisar('Prova salva. As mudanças já valem para os médiuns.', 'ok');
+    await carregarProva();
+  } catch (err) {
+    avisar('Não deu para salvar: ' + (err.message || err), 'erro');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar prova';
+  }
+}
+
+window.addEventListener('beforeunload', e => {
+  if (provaAtual) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>
