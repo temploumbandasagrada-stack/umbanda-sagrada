@@ -388,6 +388,14 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <div id="listaCursos"></div>
   </section>
 
+  <!-- ==================== PÁGINA DO CURSO ==================== -->
+  <section class="secao" id="sec-curso">
+    <button class="btn btn-mini btn-fantasma" style="margin-bottom:12px" onclick="voltarDoCurso()">&larr; Voltar aos cursos</button>
+    <h2 id="cursoPagTitulo"></h2>
+    <div class="firmeza"><span class="estrela">✦ ✦ ✦</span></div>
+    <div id="cursoPagCorpo"></div>
+  </section>
+
   <!-- ==================== BIBLIOTECA ==================== -->
   <section class="secao" id="sec-biblioteca">
     <h2>Biblioteca da casa</h2>
@@ -440,16 +448,6 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
       <strong>“Não participei desta gira”</strong>. Isso já libera o seu acesso.
     </p>
     <div id="portaoLista" style="margin-top:14px"></div>
-  </div>
-</div>
-
-<!-- MODAL CURSO (conteúdo) -->
-<div class="veu" id="veuCurso">
-  <div class="modal" style="max-width:760px">
-    <h3 id="cursoModalTitulo"></h3>
-    <div class="firmeza"><span class="estrela">✦</span></div>
-    <div id="cursoModalCorpo"></div>
-    <button class="btn btn-fantasma" onclick="fechar('veuCurso')">Fechar</button>
   </div>
 </div>
 
@@ -902,19 +900,35 @@ function abrirCurso(cursoId) {
   const c = cursosCache.find(x => x.id === cursoId);
   if (!c) return;
   cursoAbertoId = cursoId;
-  document.getElementById('cursoModalTitulo').textContent = c.titulo;
   const todasAulas = (c.modulos || []).flatMap(m => m.aulas || []);
   const feitas = todasAulas.filter(a => concluidas.has(a.id)).length;
   const pct = todasAulas.length ? Math.round(feitas / todasAulas.length * 100) : 0;
-  document.getElementById('cursoModalCorpo').innerHTML = `
-    <p class="mudo">${escapeHtml(c.descricao || '')}</p>
-    <div style="margin:10px 0; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
+  const totalMod = (c.modulos || []).length;
+
+  document.getElementById('cursoPagTitulo').textContent = c.titulo;
+  document.getElementById('cursoPagCorpo').innerHTML = `
+    ${c.descricao ? `<p class="mudo">${escapeHtml(c.descricao)}</p>` : ''}
+    <div style="margin:12px 0 4px; height:6px; background:var(--noite); border-radius:99px; overflow:hidden">
       <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,var(--ouro),var(--ouro-claro)); border-radius:99px"></div>
     </div>
-    <p class="mudo" style="font-size:.8rem">${pct}% concluído</p>
+    <p class="mudo" style="font-size:.8rem">
+      ${pct}% concluído · ${feitas} de ${todasAulas.length} aulas · ${totalMod} ${totalMod === 1 ? 'módulo' : 'módulos'}
+    </p>
     ${renderModulosSequencial(c)}
   `;
-  document.getElementById('veuCurso').classList.add('aberto');
+
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  document.querySelectorAll('.menu-op.nav').forEach(a => a.classList.remove('ativa'));
+  document.getElementById('sec-curso').classList.add('ativa');
+  const item = document.querySelector('.menu-op.nav[data-secao="cursos"]');
+  if (item) item.classList.add('ativa');
+  window.scrollTo(0, 0);
+}
+
+function voltarDoCurso() {
+  cursoAbertoId = null;
+  irPara('cursos');
+  window.scrollTo(0, 0);
 }
 
 function abrirAula(aula) {
@@ -931,7 +945,9 @@ function abrirAula(aula) {
     btn.onclick = async () => {
       await db.from('progresso_aulas').insert({ aluno_id: eu.id, aula_id: aula.id });
       concluidas.add(aula.id);
-      fechar('veuAula'); carregarCursos();
+      fechar('veuAula');
+      await carregarCursos();
+      if (cursoAbertoId) abrirCurso(cursoAbertoId);
     };
   }
   document.getElementById('veuAula').classList.add('aberto');
@@ -1000,7 +1016,7 @@ async function entregarProva() {
   const el = document.getElementById('avisoProva');
   el.className = 'aviso'; el.textContent = '';
   document.getElementById('btnEntregarProva').style.display = 'none';
-  carregarCursos();
+  await carregarCursos();
   if (aprovado && cursoAbertoId) setTimeout(() => abrirCurso(cursoAbertoId), 1200);
 }
 
