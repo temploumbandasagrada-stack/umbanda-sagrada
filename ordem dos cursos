@@ -1,52 +1,175 @@
--- ============================================================
--- CASA DE ESTUDO — POSIÇÃO DOS CURSOS
--- Cria a coluna "ordem" na tabela cursos e libera a edição
--- para admin e editor.
---
--- Rode no SQL Editor do Supabase. Pode rodar mais de uma vez.
--- ============================================================
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1321">
+<title>Casa de Estudo — Posição dos cursos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap');
+:root{
+  --noite:#0D1321; --noite-2:#111A2E; --altar:#16203A; --altar-2:#1B2745;
+  --ouro:#C9A227; --ouro-claro:#E8CE7A; --oxala:#F4EFE3; --oxala-2:#C8C2B2;
+  --erva:#6FA383; --perigo:#C46A6A; --linha:rgba(201,162,39,.22); --raio:14px;
+}
+body.claro{ --noite:#EFE9DC; --noite-2:#E7E0CF; --altar:#F6F1E4; --altar-2:#EDE6D5;
+  --oxala:#3A3222; --oxala-2:#6B6350; --linha:rgba(122,95,20,.25); }
+*{box-sizing:border-box}
+body{margin:0;background:var(--noite);color:var(--oxala);font-family:'Jost',sans-serif;font-weight:300;padding-bottom:70px}
+h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:600;margin:0}
+.topo{position:sticky;top:0;z-index:20;background:var(--noite-2);border-bottom:1px solid var(--linha);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topo h1{font-size:1.3rem;color:var(--ouro-claro);flex:1}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+.cat{margin-bottom:26px}
+.cat h3{font-size:1.3rem;margin-bottom:10px;color:var(--oxala)}
+.item{display:flex;align-items:center;gap:10px;background:var(--altar);border:1px solid var(--linha);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.pos{font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:var(--ouro);min-width:34px;text-align:center}
+.capa{width:44px;height:44px;border-radius:8px;overflow:hidden;border:1px solid var(--linha);background:var(--altar-2);flex:0 0 auto}
+.capa img{width:100%;height:100%;object-fit:cover;display:block}
+.capa .sem{width:100%;height:100%;display:grid;place-items:center;color:var(--ouro)}
+.nome{flex:1;font-size:.95rem;line-height:1.3}
+button{font-family:'Jost',sans-serif;font-size:.85rem;letter-spacing:.05em;border-radius:8px;padding:9px 13px;cursor:pointer;border:1px solid var(--linha);background:transparent;color:var(--oxala)}
+button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-weight:500;text-transform:uppercase}
+button:disabled{opacity:.35;cursor:not-allowed}
+.seta{padding:6px 11px;font-size:1rem}
+.aviso{display:none;padding:11px 14px;border-radius:8px;font-size:.9rem;margin:12px 0}
+.aviso.ok{display:block;background:rgba(111,168,124,.14);border:1px solid rgba(111,168,124,.45);color:var(--erva)}
+.aviso.erro{display:block;background:rgba(196,106,106,.14);border:1px solid rgba(196,106,106,.45);color:var(--perigo)}
+.mudo{color:var(--oxala-2);font-size:.88rem}
+.vazio{text-align:center;color:var(--oxala-2);padding:34px 16px;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+.barra{position:sticky;bottom:0;background:var(--noite-2);border-top:1px solid var(--linha);padding:12px 16px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;z-index:15}
+</style>
+</head>
+<body>
 
--- 1. Coluna de posição
-alter table cursos add column if not exists ordem int;
+<div class="topo">
+  <h1>Posição dos cursos</h1>
+  <span class="mudo" id="quemSou"></span>
+  <button onclick="alternarTema()">Tema</button>
+  <button onclick="location.href='admin.html'">Painel</button>
+</div>
 
--- 2. Numera o que já existe, agrupado por categoria,
---    mantendo a ordem alfabética atual como ponto de partida
-with numerados as (
-  select id, row_number() over (
-    partition by coalesce(categoria, 'basico')
-    order by titulo
-  ) as pos
-  from cursos
-  where ordem is null
-)
-update cursos c
-set ordem = n.pos
-from numerados n
-where c.id = n.id;
+<div class="wrap">
+  <p class="mudo">Use as setas para definir em que ordem os cursos aparecem dentro de cada faixa na tela do médium. A posição 1 é a primeira da esquerda.</p>
+  <div id="avisoTopo" class="aviso"></div>
+  <div id="lista"><p class="vazio">Carregando…</p></div>
+</div>
 
--- 3. Função auxiliar (recriada, caso ainda não exista)
-create or replace function public.pode_editar_prova()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from profiles
-    where id = auth.uid()
-      and role in ('admin','editor')
-  );
-$$;
+<div class="barra" id="barra" style="display:none">
+  <span class="mudo" id="contador" style="margin-right:auto;align-self:center"></span>
+  <button onclick="carregar()">Descartar</button>
+  <button class="ouro" id="btnSalvar" onclick="salvar()">Salvar posições</button>
+</div>
 
--- 4. Permissão para reordenar
-alter table cursos enable row level security;
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://jqepdfxtqdjtozbrlkrm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXBkZnh0cWRqdG96YnJsa3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTM4NjUsImV4cCI6MjEwMTE4OTg2NX0.9B_GAcACUsRBAe1GY7MUzmk1prquDsA6YsKp3f3v4Z0";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-drop policy if exists "cursos_leitura" on cursos;
-create policy "cursos_leitura" on cursos
-  for select using (auth.uid() is not null);
+const CATEGORIAS = [
+  { chave:'basico', nome:'Básico' },
+  { chave:'medio', nome:'Médio' },
+  { chave:'avancado', nome:'Avançado' },
+  { chave:'complementar', nome:'Cursos complementares' },
+  { chave:'outros', nome:'Outros cursos' }
+];
 
-drop policy if exists "cursos_editar" on cursos;
-create policy "cursos_editar" on cursos
-  for update using (public.pode_editar_prova())
-  with check (public.pode_editar_prova());
+let eu = null, grupos = {};
+
+function aplicarTema(){ document.body.classList.toggle('claro', localStorage.getItem('tema')==='claro'); }
+function alternarTema(){ const c=!(localStorage.getItem('tema')==='claro'); localStorage.setItem('tema',c?'claro':'escuro'); aplicarTema(); }
+aplicarTema();
+
+function escapeHtml(t){ return (t||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function avisar(txt,tipo){
+  const el=document.getElementById('avisoTopo');
+  el.className='aviso '+tipo; el.textContent=txt;
+  if(tipo==='ok') setTimeout(()=>{el.className='aviso';el.textContent='';},4000);
+}
+
+init();
+async function init(){
+  const { data:{ session } } = await db.auth.getSession();
+  if(!session){ location.href='index.html'; return; }
+  const { data:perfil } = await db.from('profiles').select('*').eq('id',session.user.id).single();
+  if(!perfil){ location.href='index.html'; return; }
+  if(perfil.role!=='admin' && perfil.role!=='editor'){
+    document.querySelector('.wrap').innerHTML='<div class="vazio">Esta página é só para administradores e editores.</div>';
+    return;
+  }
+  eu = perfil;
+  document.getElementById('quemSou').textContent = perfil.nome.split(' ')[0]+' · '+perfil.role;
+  carregar();
+}
+
+async function carregar(){
+  const { data, error } = await db.from('cursos')
+    .select('id,titulo,categoria,capa_url,ativo,ordem')
+    .order('ordem', { nullsFirst:false }).order('titulo');
+  if(error){ avisar('Erro ao carregar: '+error.message,'erro'); return; }
+
+  grupos = {};
+  CATEGORIAS.forEach(c => grupos[c.chave] = []);
+  (data||[]).forEach(c => {
+    const k = grupos[c.categoria] ? c.categoria : 'basico';
+    grupos[k].push(c);
+  });
+  desenhar();
+  document.getElementById('barra').style.display='flex';
+}
+
+function desenhar(){
+  const el = document.getElementById('lista');
+  let total = 0;
+  el.innerHTML = CATEGORIAS.map(cat => {
+    const itens = grupos[cat.chave] || [];
+    if(!itens.length) return '';
+    total += itens.length;
+    return `
+      <div class="cat">
+        <h3>${cat.nome}</h3>
+        ${itens.map((c,i)=>`
+          <div class="item">
+            <span class="pos">${i+1}</span>
+            <div class="capa">${c.capa_url?`<img src="${c.capa_url}" alt="">`:`<div class="sem">✦</div>`}</div>
+            <span class="nome">${escapeHtml(c.titulo)}${c.ativo?'':' <span class="mudo">(inativo)</span>'}</span>
+            <button class="seta" onclick="mover('${cat.chave}',${i},-1)" ${i===0?'disabled':''}>↑</button>
+            <button class="seta" onclick="mover('${cat.chave}',${i},1)" ${i===itens.length-1?'disabled':''}>↓</button>
+          </div>`).join('')}
+      </div>`;
+  }).join('') || '<p class="vazio">Nenhum curso cadastrado.</p>';
+  document.getElementById('contador').textContent = total + (total===1?' curso':' cursos');
+}
+
+function mover(cat,i,dir){
+  const arr = grupos[cat];
+  const j = i+dir;
+  if(j<0 || j>=arr.length) return;
+  const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  desenhar();
+}
+
+async function salvar(){
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    for(const cat of CATEGORIAS){
+      const arr = grupos[cat.chave] || [];
+      for(let i=0;i<arr.length;i++){
+        if(arr[i].ordem === i+1) continue;   // já está na posição certa
+        const { error } = await db.from('cursos').update({ ordem: i+1 }).eq('id', arr[i].id);
+        if(error) throw error;
+        arr[i].ordem = i+1;
+      }
+    }
+    avisar('Posições salvas. Já valem para os médiuns.','ok');
+  }catch(err){
+    avisar('Não deu para salvar: '+(err.message||err),'erro');
+  }finally{
+    btn.disabled=false; btn.textContent='Salvar posições';
+  }
+}
+</script>
+</body>
+</html>
