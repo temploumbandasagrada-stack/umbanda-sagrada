@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1321">
+<title>Casa de Estudo — Acompanhamento</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap');
+:root{
+  --noite:#0D1321; --noite-2:#111A2E; --altar:#16203A; --altar-2:#1B2745;
+  --ouro:#C9A227; --ouro-claro:#E8CE7A; --oxala:#F4EFE3; --oxala-2:#C8C2B2;
+  --agua:#7FA3C4; --erva:#6FA383; --perigo:#C46A6A; --linha:rgba(201,162,39,.22); --raio:14px;
+}
+body.claro{ --noite:#EFE9DC; --noite-2:#E7E0CF; --altar:#F6F1E4; --altar-2:#EDE6D5;
+  --oxala:#3A3222; --oxala-2:#6B6350; --linha:rgba(122,95,20,.25); }
+*{box-sizing:border-box}
+body{margin:0;background:var(--noite);color:var(--oxala);font-family:'Jost',sans-serif;font-weight:300;padding-bottom:40px}
+h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:600;margin:0}
+.topo{position:sticky;top:0;z-index:20;background:var(--noite-2);border-bottom:1px solid var(--linha);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topo h1{font-size:1.3rem;color:var(--ouro-claro);flex:1}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+input,select{width:100%;background:var(--altar-2);border:1px solid var(--linha);border-radius:8px;color:var(--oxala);padding:10px 12px;font-family:'Jost',sans-serif;font-size:.95rem;font-weight:300}
+input:focus,select:focus{outline:none;border-color:var(--ouro)}
+button{font-family:'Jost',sans-serif;font-size:.82rem;letter-spacing:.05em;border-radius:8px;padding:9px 13px;cursor:pointer;border:1px solid var(--linha);background:transparent;color:var(--oxala)}
+button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-weight:500}
+.cartao{background:var(--altar);border:1px solid var(--linha);border-radius:var(--raio);padding:14px;margin-bottom:12px}
+.aluno{display:flex;align-items:center;gap:12px;background:var(--altar);border:1px solid var(--linha);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
+.aluno:hover{border-color:var(--ouro)}
+.aluno .nome{flex:1}
+.aluno .nome small{display:block;color:var(--oxala-2);font-size:.78rem;margin-top:2px}
+.barrinha{height:5px;background:var(--noite);border-radius:99px;overflow:hidden;margin-top:6px}
+.barrinha div{height:100%;background:linear-gradient(90deg,var(--ouro),var(--ouro-claro))}
+.lupa{font-size:1.15rem}
+.mod{border-left:2px solid var(--linha);padding:2px 0 2px 12px;margin:12px 0}
+.mod h4{font-family:'Cormorant Garamond',serif;font-size:1.1rem;margin:0 0 4px;color:var(--oxala)}
+.aula{display:flex;gap:8px;align-items:baseline;font-size:.88rem;margin:5px 0;flex-wrap:wrap}
+.aula .t{flex:1;min-width:150px}
+.selo{display:inline-block;font-size:.7rem;letter-spacing:.05em;padding:2px 8px;border-radius:99px;border:1px solid var(--linha);color:var(--oxala-2)}
+.selo.verde{color:var(--erva);border-color:rgba(111,168,124,.5)}
+.selo.vermelho{color:var(--perigo);border-color:rgba(196,106,106,.5)}
+.selo.azul{color:var(--agua);border-color:rgba(127,163,196,.5)}
+.selo.ouro{color:var(--ouro-claro);border-color:var(--linha)}
+.mudo{color:var(--oxala-2);font-size:.85rem}
+.vazio{text-align:center;color:var(--oxala-2);padding:34px 16px;font-style:italic;font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+.resumo{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 12px}
+.resumo div{font-size:.85rem}
+.resumo strong{display:block;font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--ouro-claro);font-weight:600}
+.aviso{display:none;padding:11px 14px;border-radius:8px;font-size:.9rem;margin:12px 0}
+.aviso.erro{display:block;background:rgba(196,106,106,.14);border:1px solid rgba(196,106,106,.45);color:var(--perigo)}
+@media(max-width:560px){.topo h1{font-size:1.1rem}}
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <h1 id="tituloTopo">Acompanhamento</h1>
+  <span class="mudo" id="quemSou"></span>
+  <button onclick="alternarTema()">Tema</button>
+  <button onclick="location.href='admin.html'">Painel</button>
+</div>
+
+<div class="wrap">
+  <div id="avisoTopo" class="aviso"></div>
+
+  <!-- LISTA DE MÉDIUNS -->
+  <div id="telaLista">
+    <div style="margin-bottom:12px">
+      <input id="busca" type="search" placeholder="Buscar médium pelo nome…" oninput="desenharLista()">
+    </div>
+    <div id="listaAlunos"><p class="vazio">Carregando…</p></div>
+  </div>
+
+  <!-- DETALHE DE UM MÉDIUM -->
+  <div id="telaDetalhe" style="display:none">
+    <button onclick="voltar()" style="margin-bottom:12px">&larr; Voltar à lista</button>
+    <div id="detalheCorpo"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://jqepdfxtqdjtozbrlkrm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxZXBkZnh0cWRqdG96YnJsa3JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU2MTM4NjUsImV4cCI6MjEwMTE4OTg2NX0.9B_GAcACUsRBAe1GY7MUzmk1prquDsA6YsKp3f3v4Z0";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let eu = null, alunos = [], cursos = [], temData = true;
+
+function aplicarTema(){ document.body.classList.toggle('claro', localStorage.getItem('tema')==='claro'); }
+function alternarTema(){ const c=!(localStorage.getItem('tema')==='claro'); localStorage.setItem('tema',c?'claro':'escuro'); aplicarTema(); }
+aplicarTema();
+
+function escapeHtml(t){ return (t||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function erro(txt){ const el=document.getElementById('avisoTopo'); el.className='aviso erro'; el.textContent=txt; }
+
+/* --------- formatação de tempo --------- */
+function dataHora(iso){
+  if(!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function duracao(ini, fim){
+  if(!ini || !fim) return null;
+  let ms = new Date(fim) - new Date(ini);
+  if(ms < 0) return null;
+  const min = Math.round(ms/60000);
+  if(min < 60) return min + (min===1?' minuto':' minutos');
+  const h = Math.floor(min/60), m = min%60;
+  if(h < 24) return h + (h===1?' hora':' horas') + (m?' e '+m+'min':'');
+  const dias = Math.floor(h/24), hr = h%24;
+  return dias + (dias===1?' dia':' dias') + (hr?' e '+hr+'h':'');
+}
+
+/* --------- login --------- */
+init();
+async function init(){
+  const { data:{ session } } = await db.auth.getSession();
+  if(!session){ location.href='index.html'; return; }
+  const { data:perfil } = await db.from('profiles').select('*').eq('id',session.user.id).single();
+  if(!perfil){ location.href='index.html'; return; }
+  if(perfil.role!=='admin' && perfil.role!=='editor'){
+    document.querySelector('.wrap').innerHTML='<div class="vazio">Esta página é só para administradores e editores.</div>';
+    return;
+  }
+  eu = perfil;
+  document.getElementById('quemSou').textContent = perfil.nome.split(' ')[0]+' · '+perfil.role;
+  await carregarBase();
+}
+
+async function carregarBase(){
+  const r1 = await db.from('profiles').select('id,nome,email,nivel,role,ativo').order('nome');
+  if(r1.error){ erro('Erro ao carregar médiuns: '+r1.error.message); return; }
+  alunos = (r1.data||[]).filter(p => p.role !== 'admin');
+
+  const r2 = await db.from('cursos')
+    .select('id,titulo,categoria,ordem,ativo, modulos(id,titulo,ordem, aulas(id,titulo,ordem), provas(id,titulo,nota_minima))')
+    .order('categoria').order('ordem',{nullsFirst:false});
+  if(r2.error){ erro('Erro ao carregar cursos: '+r2.error.message); return; }
+  cursos = r2.data||[];
+
+  // conta quantas aulas cada aluno concluiu, para o resumo da lista
+  const r3 = await db.from('progresso_aulas').select('aluno_id,aula_id,created_at');
+  if(r3.error){ erro('Erro ao carregar progresso: '+r3.error.message); return; }
+  window.progressoTodos = r3.data||[];
+  temData = (r3.data||[]).some(p => p.created_at);
+
+  desenharLista();
+}
+
+/* --------- lista --------- */
+function desenharLista(){
+  const termo = (document.getElementById('busca').value||'').toLowerCase();
+  const totalAulas = cursos.filter(c=>c.ativo).flatMap(c=>(c.modulos||[]).flatMap(m=>m.aulas||[])).length;
+
+  const cont = {};
+  (window.progressoTodos||[]).forEach(p => cont[p.aluno_id] = (cont[p.aluno_id]||0)+1);
+
+  const filtrados = alunos.filter(a => (a.nome||'').toLowerCase().includes(termo));
+  const el = document.getElementById('listaAlunos');
+  if(!filtrados.length){ el.innerHTML='<p class="vazio">Nenhum médium encontrado.</p>'; return; }
+
+  el.innerHTML = filtrados.map(a=>{
+    const feitas = cont[a.id]||0;
+    const pct = totalAulas ? Math.round(feitas/totalAulas*100) : 0;
+    return `
+    <div class="aluno" onclick="abrirDetalhe('${a.id}')">
+      <div class="nome">
+        ${escapeHtml(a.nome)} ${a.ativo?'':'<span class="selo vermelho">inativo</span>'}
+        <small>${feitas} de ${totalAulas} aulas · ${pct}%${a.nivel?' · Nível '+escapeHtml(String(a.nivel)):''}</small>
+        <div class="barrinha"><div style="width:${pct}%"></div></div>
+      </div>
+      <span class="lupa">🔍</span>
+    </div>`;
+  }).join('');
+}
+
+/* --------- detalhe --------- */
+async function abrirDetalhe(alunoId){
+  const a = alunos.find(x=>x.id===alunoId);
+  if(!a) return;
+  document.getElementById('telaLista').style.display='none';
+  document.getElementById('telaDetalhe').style.display='block';
+  document.getElementById('tituloTopo').textContent = a.nome.split(' ')[0];
+  document.getElementById('detalheCorpo').innerHTML = '<p class="vazio">Abrindo…</p>';
+  window.scrollTo(0,0);
+
+  const r1 = await db.from('progresso_aulas').select('aula_id,created_at').eq('aluno_id',alunoId);
+  const r2 = await db.from('resultados_provas').select('prova_id,nota,aprovado,created_at').eq('aluno_id',alunoId);
+  if(r1.error||r2.error){ erro('Erro ao abrir: '+((r1.error||r2.error).message)); return; }
+
+  const mapaAula = {}; (r1.data||[]).forEach(p => mapaAula[p.aula_id] = p.created_at);
+  const tentativas = {};
+  (r2.data||[]).forEach(p => { (tentativas[p.prova_id] = tentativas[p.prova_id] || []).push(p); });
+  Object.values(tentativas).forEach(arr => arr.sort((x,y)=>String(x.created_at||'').localeCompare(String(y.created_at||''))));
+
+  // datas gerais
+  const todasDatas = [...(r1.data||[]).map(x=>x.created_at), ...(r2.data||[]).map(x=>x.created_at)].filter(Boolean).sort();
+  const primeiro = todasDatas[0], ultimo = todasDatas[todasDatas.length-1];
+
+  let html = `
+    <div class="cartao">
+      <h3>${escapeHtml(a.nome)}</h3>
+      <p class="mudo">${escapeHtml(a.email||'')}${a.nivel?' · Nível '+escapeHtml(String(a.nivel)):''} · ${escapeHtml(a.role)}</p>
+      <div class="resumo" style="margin-top:10px">
+        <div><strong>${(r1.data||[]).length}</strong> aulas concluídas</div>
+        <div><strong>${(r2.data||[]).filter(x=>x.aprovado).length}</strong> provas aprovadas</div>
+        <div><strong>${(r2.data||[]).length}</strong> tentativas de prova</div>
+      </div>
+      ${primeiro ? `<p class="mudo">Primeiro registro: ${dataHora(primeiro)} · Último: ${dataHora(ultimo)}</p>` : ''}
+      ${!temData ? '<p class="mudo">Os registros anteriores à ativação do acompanhamento aparecem sem data.</p>' : ''}
+    </div>`;
+
+  cursos.forEach(c=>{
+    const mods = (c.modulos||[]).slice().sort((x,y)=>(x.ordem||0)-(y.ordem||0));
+    const aulasCurso = mods.flatMap(m=>m.aulas||[]);
+    const feitasCurso = aulasCurso.filter(x=>mapaAula[x.id]!==undefined).length;
+    if(!feitasCurso) return;   // não mostra curso que ele nem começou
+
+    // datas do curso inteiro
+    const dts = aulasCurso.map(x=>mapaAula[x.id]).filter(Boolean).sort();
+    const durCurso = duracao(dts[0], dts[dts.length-1]);
+
+    html += `<div class="cartao">
+      <h3>${escapeHtml(c.titulo)}</h3>
+      <p class="mudo">${feitasCurso} de ${aulasCurso.length} aulas${durCurso?' · levou '+durCurso+' do começo à última aula':''}</p>`;
+
+    mods.forEach(m=>{
+      const aulas = (m.aulas||[]).slice().sort((x,y)=>(x.ordem||0)-(y.ordem||0));
+      const feitas = aulas.filter(x=>mapaAula[x.id]!==undefined);
+      const prova = (m.provas||[])[0];
+      const tents = prova ? (tentativas[prova.id]||[]) : [];
+      const aprov = tents.find(t=>t.aprovado);
+
+      if(!feitas.length && !tents.length){
+        html += `<div class="mod"><h4>${escapeHtml(m.titulo)}</h4><p class="mudo">Não iniciado.</p></div>`;
+        return;
+      }
+
+      // tempo do módulo: da primeira aula até a aprovação (ou última aula)
+      const dm = feitas.map(x=>mapaAula[x.id]).filter(Boolean).sort();
+      const ini = dm[0];
+      const fim = (aprov && aprov.created_at) ? aprov.created_at : dm[dm.length-1];
+      const dur = duracao(ini, fim);
+
+      const completo = feitas.length===aulas.length && (!prova || aprov);
+
+      html += `<div class="mod">
+        <h4>${escapeHtml(m.titulo)}
+          ${completo?'<span class="selo verde">concluído</span>':'<span class="selo azul">em andamento</span>'}
+        </h4>
+        ${dur?`<p class="mudo">Levou <strong style="color:var(--ouro-claro)">${dur}</strong> ${aprov?'da primeira aula até passar na prova':'entre a primeira e a última aula'}.</p>`:''}
+        ${aulas.map(x=>{
+          const q = mapaAula[x.id];
+          if(q===undefined) return `<div class="aula"><span class="t">${escapeHtml(x.titulo)}</span><span class="selo">pendente</span></div>`;
+          return `<div class="aula"><span class="t">${escapeHtml(x.titulo)}</span>
+            <span class="selo verde">✔ ${q?dataHora(q):'sem registro de data'}</span></div>`;
+        }).join('')}
+        ${prova ? (tents.length
+          ? tents.map((t,i)=>`<div class="aula">
+              <span class="t">${escapeHtml(prova.titulo)}${tents.length>1?' — tentativa '+(i+1):''}</span>
+              <span class="selo ${t.aprovado?'verde':'vermelho'}">${t.nota}% ${t.aprovado?'aprovado':'reprovado'}</span>
+              <span class="selo">${t.created_at?dataHora(t.created_at):'sem registro de data'}</span>
+            </div>`).join('')
+          : `<div class="aula"><span class="t">${escapeHtml(prova.titulo)}</span><span class="selo">não fez a prova</span></div>`)
+        : ''}
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  if(!(r1.data||[]).length) html += '<p class="vazio">Este médium ainda não concluiu nenhuma aula.</p>';
+  document.getElementById('detalheCorpo').innerHTML = html;
+}
+
+function voltar(){
+  document.getElementById('telaDetalhe').style.display='none';
+  document.getElementById('telaLista').style.display='block';
+  document.getElementById('tituloTopo').textContent='Acompanhamento';
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
