@@ -527,7 +527,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
     <!-- Bloco médium de frente -->
     <div id="blocoFrente" style="display:none; margin-top:16px">
       <h3 style="font-size:1.15rem">Consulentes (médium de frente)</h3>
-      <p class="mudo" style="font-size:.82rem">Liste cada consulente e com qual entidade passou. Esses nomes serão comparados com os do cambone.</p>
+      <p class="mudo" style="font-size:.82rem">Liste cada consulente e com qual entidade passou. Marque se a pessoa é nova na casa e anote o telefone, se ela deixou. Esses nomes serão comparados com os do cambone.</p>
       <div id="camposFrente_lista"></div>
       <button type="button" class="btn btn-mini btn-fantasma addbtn" id="relatoAddFrente" onclick="addLinhaFrente()">+ Adicionar consulente</button>
     </div>
@@ -1291,11 +1291,21 @@ function addLinhaCambone(p = {}) {
 function addLinhaFrente(c = {}) {
   const div = document.createElement('div');
   div.className = 'linhaFrente';
-  div.style = 'display:flex; gap:8px; margin:8px 0; flex-wrap:wrap';
+  div.style = 'border-left:2px solid var(--linha); padding-left:12px; margin:10px 0';
   div.innerHTML = `
-    <input class="f_nome" placeholder="Nome do consulente" value="${escapeHtml(c.nome||'')}" style="flex:1; min-width:140px">
-    <input class="f_entidade" placeholder="Passou com qual entidade" value="${escapeHtml(c.entidade||'')}" style="flex:1; min-width:140px">
-    <button type="button" class="btn btn-mini btn-perigo" style="margin:0" onclick="this.parentElement.remove()">×</button>`;
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <input class="f_nome" placeholder="Nome do consulente" value="${escapeHtml(c.nome||'')}" style="flex:1; min-width:140px">
+      <input class="f_entidade" placeholder="Passou com qual entidade" value="${escapeHtml(c.entidade||'')}" style="flex:1; min-width:140px">
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
+      <select class="f_nova" style="flex:1; min-width:150px">
+        <option value="" ${!c.nova ? 'selected' : ''}>É nova na casa? —</option>
+        <option value="sim" ${c.nova === 'sim' ? 'selected' : ''}>Sim, é a primeira vez</option>
+        <option value="nao" ${c.nova === 'nao' ? 'selected' : ''}>Não, já frequenta</option>
+      </select>
+      <input class="f_telefone" type="tel" inputmode="tel" placeholder="Telefone (se deixou)" value="${escapeHtml(c.telefone||'')}" style="flex:1; min-width:150px">
+      <button type="button" class="btn btn-mini btn-perigo" style="margin:0" onclick="this.closest('.linhaFrente').remove()">Remover</button>
+    </div>`;
   document.getElementById('camposFrente_lista').appendChild(div);
 }
 
@@ -1309,7 +1319,9 @@ function coletarDados() {
   }));
   const consulentes_frente = Array.from(document.querySelectorAll('.linhaFrente')).map(d => ({
     nome: d.querySelector('.f_nome').value.trim(),
-    entidade: d.querySelector('.f_entidade').value.trim()
+    entidade: d.querySelector('.f_entidade').value.trim(),
+    nova: d.querySelector('.f_nova').value,
+    telefone: d.querySelector('.f_telefone').value.trim()
   }));
   return {
     funcoes: funcoesMarcadas(),
@@ -1339,11 +1351,11 @@ async function enviarRelato() {
 }
 
 function bloquearSeVer() {
-  const inputs = document.querySelectorAll('#veuRelato input, #veuRelato textarea, #veuRelato button.addbtn');
+  const inputs = document.querySelectorAll('#veuRelato input, #veuRelato textarea, #veuRelato select, #veuRelato button.addbtn');
   document.getElementById('relatoAcoes').style.display = somenteVer ? 'none' : 'block';
   document.getElementById('relatoAddCambone').style.display = somenteVer ? 'none' : 'inline-block';
   document.getElementById('relatoAddFrente').style.display = somenteVer ? 'none' : 'inline-block';
-  inputs.forEach(el => { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.disabled = somenteVer; });
+  inputs.forEach(el => { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') el.disabled = somenteVer; });
 }
 
 function aviso2(msg, erro) {
