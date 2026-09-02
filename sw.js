@@ -5,7 +5,7 @@
 //
 // >>> Toda vez que subir arquivo novo, troque o número aqui embaixo <<<
 // ============================================================
-const VERSAO = 'casa-de-estudo-v17';
+const VERSAO = 'casa-de-estudo-v18';
 
 const ESSENCIAIS = [
   './',
@@ -15,7 +15,10 @@ const ESSENCIAIS = [
   './entidades.html',
   './mensalidade.html',
   './lembretes.html',
-  './filmes.html'
+  './filmes.html',
+  './provas.html',
+  './ordemdoscursos.html',
+  './acompanhamento.html'
 ];
 
 // Instala e já assume o controle sem esperar
