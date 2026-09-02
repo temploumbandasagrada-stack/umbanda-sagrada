@@ -24,6 +24,7 @@ input,select{width:100%;background:var(--altar-2);border:1px solid var(--linha);
 input:focus,select:focus{outline:none;border-color:var(--ouro)}
 button{font-family:'Jost',sans-serif;font-size:.82rem;letter-spacing:.05em;border-radius:8px;padding:9px 13px;cursor:pointer;border:1px solid var(--linha);background:transparent;color:var(--oxala)}
 button.ouro{background:var(--ouro);color:#1a1206;border-color:var(--ouro);font-weight:500}
+button.perigo{border-color:rgba(196,106,106,.5);color:var(--perigo)}
 .cartao{background:var(--altar);border:1px solid var(--linha);border-radius:var(--raio);padding:14px;margin-bottom:12px}
 .aluno{display:flex;align-items:center;gap:12px;background:var(--altar);border:1px solid var(--linha);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer}
 .aluno:hover{border-color:var(--ouro)}
@@ -215,6 +216,7 @@ function desenharLista(){
 async function abrirDetalhe(alunoId){
   const a = alunos.find(x=>x.id===alunoId);
   if(!a) return;
+  window.alunoAberto = alunoId;
   document.getElementById('telaLista').style.display='none';
   document.getElementById('telaDetalhe').style.display='block';
   document.getElementById('tituloTopo').textContent = a.nome.split(' ')[0];
@@ -223,7 +225,7 @@ async function abrirDetalhe(alunoId){
 
   const r1 = await db.from('progresso_aulas').select('aula_id,created_at').eq('aluno_id',alunoId);
   const r2 = await db.from('resultados_provas').select('prova_id,nota,aprovado,created_at').eq('aluno_id',alunoId);
-  const rg = await db.from('relatos_gira').select('gira_id,dados,enviado,enviado_em').eq('aluno_id',alunoId);
+  const rg = await db.from('relatos_gira').select('id,gira_id,dados,enviado,enviado_em').eq('aluno_id',alunoId);
   if(r1.error||r2.error){ erro('Erro ao abrir: '+((r1.error||r2.error).message)); return; }
   if(rg.error) erro('Aviso: não consegui ler os relatos de gira — '+rg.error.message);
 
@@ -347,10 +349,12 @@ function desenharGiras(relatos){
       corpo = '<p class="mudo">Este médium não abriu o formulário desta gira.</p>';
     } else if(!r.enviado){
       selo = '<span class="selo azul">rascunho</span>';
-      corpo = '<p class="mudo">Começou a preencher mas ainda não enviou.</p>' + corpoRelato(r.dados||{});
+      corpo = '<p class="mudo">Começou a preencher mas ainda não enviou.</p>' + corpoRelato(r.dados||{})
+            + botaoApagar(r.id, g.titulo, 'o rascunho');
     } else {
       selo = '<span class="selo verde">enviado</span>';
-      corpo = (r.enviado_em?`<p class="mudo">Enviado em ${dataHora(r.enviado_em)}</p>`:'') + corpoRelato(r.dados||{});
+      corpo = (r.enviado_em?`<p class="mudo">Enviado em ${dataHora(r.enviado_em)}</p>`:'') + corpoRelato(r.dados||{})
+            + botaoApagar(r.id, g.titulo, 'o relato');
     }
 
     return `<details class="gira">
@@ -363,6 +367,30 @@ function desenharGiras(relatos){
       ${corpo}
     </details>`;
   }).join('');
+}
+
+function botaoApagar(relatoId, tituloGira, oQue){
+  return `<div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--linha)">
+    <button class="perigo" onclick="apagarRelato('${relatoId}', ${JSON.stringify(tituloGira)}, '${oQue}')">
+      Apagar ${oQue} — o médium refaz do zero
+    </button>
+  </div>`;
+}
+
+async function apagarRelato(relatoId, tituloGira, oQue){
+  const nome = (alunos.find(x=>x.id===window.alunoAberto)||{}).nome || 'este médium';
+  if(!confirm('Apagar '+oQue+' de '+nome+'?\n\nGira: '+tituloGira+'\n\nTudo o que ele escreveu será perdido e ele terá que preencher de novo.')) return;
+  if(!confirm('Confirma? Esta ação não tem volta.')) return;
+
+  const { error } = await db.from('relatos_gira').delete().eq('id', relatoId);
+  if(error){ erro('Não deu para apagar: '+error.message); return; }
+
+  // atualiza a contagem da lista e reabre o médium
+  const r5 = await db.from('relatos_gira').select('aluno_id,gira_id,enviado');
+  window.relatosTodos = r5.error ? (window.relatosTodos||[]) : (r5.data||[]);
+  await abrirDetalhe(window.alunoAberto);
+  trocarAba('giras');
+  desenharLista();
 }
 
 function corpoRelato(d){
