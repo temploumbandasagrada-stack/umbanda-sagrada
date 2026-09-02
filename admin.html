@@ -219,6 +219,8 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
   <button class="aba" onclick="location.href='entidades.html'">Entidades</button>
   <button class="aba" onclick="location.href='lembretes.html'">Lembretes</button>
   <button class="aba" onclick="location.href='mensalidade.html'">Mensalidade</button>
+  <button class="aba" onclick="location.href='acompanhamento.html'">Acompanhamento</button>
+  <button class="aba" onclick="location.href='ordemdoscursos.html'">Posição dos cursos</button>
 </nav>
 
 <main class="conteudo">
@@ -402,6 +404,7 @@ video, iframe.video { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--l
 <div class="veu" id="veuRelato">
   <div class="modal" style="max-width:640px">
     <div id="relatoCorpo"></div>
+    <button class="btn btn-perigo" id="btnApagarRelato">Apagar relato — o médium refaz</button>
     <button class="btn btn-fantasma" onclick="fechar('veuRelato')">Fechar</button>
   </div>
 </div>
@@ -1175,6 +1178,17 @@ function verRelato(r, g) {
   if (d.feedback) h += `<p style="margin-top:12px"><strong>Feedback para a casa:</strong><br><span style="white-space:pre-wrap">${escapeHtml(d.feedback)}</span></p>`;
 
   document.getElementById('relatoCorpo').innerHTML = h;
+
+  document.getElementById('btnApagarRelato').onclick = async () => {
+    const quem = (r.profiles && r.profiles.nome) ? r.profiles.nome : 'este médium';
+    if (!confirm('Apagar o relato de ' + quem + '?\n\nGira: ' + g.titulo + '\n\nTudo o que ele escreveu se perde e ele terá que preencher de novo.')) return;
+    if (!confirm('Confirma? Não tem volta.')) return;
+    const { error } = await db.from('relatos_gira').delete().eq('id', r.id);
+    if (error) { alert('Não deu para apagar: ' + error.message); return; }
+    fechar('veuRelato');
+    carregarGiras();
+  };
+
   document.getElementById('veuRelato').classList.add('aberto');
 }
 </script>
